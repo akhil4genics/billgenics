@@ -1,0 +1,18 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - env | grep -e MONGODB_URI -e NEXTAUTH_SECRET -e NEXTAUTH_URL -e SMTP_USER -e SMTP_PASSWORD -e SMTP_FROM_NAME -e S3_BUCKET_NAME -e ACCESS_KEY_AWS -e SECRET_KEY_AWS -e REGION -e TOKEN_SECRET_KEY
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*

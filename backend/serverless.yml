@@ -1,0 +1,41 @@
+service: billgenics-backend
+
+frameworkVersion: '3'
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ap-southeast-2
+  stage: ${opt:stage, 'dev'}
+  timeout: 30
+  memorySize: 512
+  environment:
+    MONGODB_URI: ${env:MONGODB_URI}
+    S3_BUCKET_NAME: ${env:S3_BUCKET_NAME}
+    ACCESS_KEY_AWS: ${env:ACCESS_KEY_AWS}
+    SECRET_KEY_AWS: ${env:SECRET_KEY_AWS}
+    REGION: ${env:REGION}
+    SMTP_USER: ${env:SMTP_USER}
+    SMTP_PASSWORD: ${env:SMTP_PASSWORD}
+    SMTP_FROM_NAME: ${env:SMTP_FROM_NAME}
+    AUTH_SECRET: ${env:AUTH_SECRET}
+    FRONTEND_URL: ${env:FRONTEND_URL}
+    BACKEND_URL: ${env:BACKEND_URL}
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+
+plugins:
+  - serverless-plugin-typescript
+  - serverless-offline
+
+functions:
+  api:
+    handler: src/handler.api
+    events:
+      - httpApi: '*'
+
+custom:
+  serverless-offline:
+    httpPort: 3001
+    noPrependStageInUrl: true
