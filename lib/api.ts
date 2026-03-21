@@ -3,15 +3,21 @@
  * All backend API calls should use these helpers.
  */
 
+import { getSession } from 'next-auth/react';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
-/** Build a full backend API URL from a path (e.g. '/api/albums') */
-export function apiUrl(path: string): string {
-  return `${API_URL}${path}`;
+/** Get the backend API base URL, optionally appending a path */
+export function apiUrl(path?: string): string {
+  return path ? `${API_URL}${path}` : API_URL;
 }
 
 /** Build Authorization + Content-Type headers for authenticated requests */
-export function authHeaders(accessToken: string): HeadersInit {
+export async function authHeaders(accessToken?: string): Promise<HeadersInit> {
+  if (!accessToken) {
+    const session = await getSession();
+    accessToken = (session as unknown as { accessToken?: string })?.accessToken || '';
+  }
   return {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${accessToken}`,
@@ -19,7 +25,11 @@ export function authHeaders(accessToken: string): HeadersInit {
 }
 
 /** Build Authorization header only (for non-JSON requests like FormData) */
-export function authBearerHeader(accessToken: string): HeadersInit {
+export async function authBearerHeader(accessToken?: string): Promise<HeadersInit> {
+  if (!accessToken) {
+    const session = await getSession();
+    accessToken = (session as unknown as { accessToken?: string })?.accessToken || '';
+  }
   return {
     Authorization: `Bearer ${accessToken}`,
   };

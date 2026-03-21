@@ -153,7 +153,7 @@ export async function register(req: Request, res: Response): Promise<void> {
     const emailHtml = generateVerificationEmail(validatedData.firstName, verificationLink, 24);
     await sendEmail({
       to: validatedData.email,
-      subject: 'Verify Your Email - PicsGenics',
+      subject: 'Verify Your Email - BillGenics',
       html: emailHtml,
     });
 
@@ -253,7 +253,7 @@ export async function completeAccount(req: Request, res: Response): Promise<void
 
     if (!user) {
       res.status(400).json({
-        error: 'Invalid invitation link. Please contact the person who shared the album with you.',
+        error: 'Invalid invitation link. Please contact the person who invited you.',
       });
       return;
     }
@@ -273,7 +273,7 @@ export async function completeAccount(req: Request, res: Response): Promise<void
       new Date() > new Date(user.loginSession.registrationCodeExpiresAt)
     ) {
       res.status(400).json({
-        error: 'Invitation link has expired. Please ask the album owner to share with you again.',
+        error: 'Invitation link has expired. Please ask the person who invited you to send a new invitation.',
       });
       return;
     }
@@ -328,7 +328,7 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
     const emailContent = generatePasswordResetEmail(user.name || user.email, resetUrl);
     await sendEmail({
       to: user.email,
-      subject: 'Reset Your PicsGenics Password',
+      subject: 'Reset Your BillGenics Password',
       html: emailContent,
     });
 

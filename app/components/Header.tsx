@@ -75,12 +75,12 @@ export function Header({ showNav = true, showAuthButtons = true }: HeaderProps) 
             >
               How It Works
             </a>
-            <a
-              href="#pricing"
+            <Link
+              href="/signin"
               className="text-sm font-medium text-muted hover:text-foreground"
             >
-              Pricing
-            </a>
+              Get Started
+            </Link>
           </nav>
         )}
 
@@ -105,7 +105,7 @@ export function Header({ showNav = true, showAuthButtons = true }: HeaderProps) 
                 Sign In
               </Link>
               <Link
-                href="/signin"
+                href="/signup"
                 className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
               >
                 Get Started

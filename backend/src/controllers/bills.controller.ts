@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { z } from 'zod';
+import mongoose from 'mongoose';
 import { AuthRequest } from '../middleware/auth';
 import Bill, { EBillCategory, EBillStatus, EEntryMethod } from '../models/Bill';
 import { getPresignedUploadUrl } from '../lib/s3';
@@ -126,7 +127,7 @@ export async function getBillStats(req: AuthRequest, res: Response): Promise<voi
     const stats = await Bill.aggregate([
       {
         $match: {
-          userId: Bill.base.Types.ObjectId.createFromHexString(userId),
+          userId: new mongoose.Types.ObjectId(userId),
           status: EBillStatus.ACTIVE,
           date: { $gte: startDate, $lt: endDate },
         },

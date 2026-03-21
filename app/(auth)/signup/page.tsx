@@ -163,7 +163,7 @@ export default function SignUpPage() {
               <p className='mt-4 text-muted'>
                 We&apos;ve sent a verification link to <span className='font-medium text-foreground'>{email}</span>
               </p>
-              <p className='mt-2 text-muted'>Click the link in the email to verify your account and start using PicsGenics.</p>
+              <p className='mt-2 text-muted'>Click the link in the email to verify your account and start using BillGenics.</p>
 
               <div className='mt-8 rounded-lg bg-secondary/50 p-4'>
                 <div className='flex items-start gap-3'>

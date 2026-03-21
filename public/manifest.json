@@ -1,7 +1,7 @@
 {
-  "name": "PicsGenics - Share Your Memories",
-  "short_name": "PicsGenics",
-  "description": "Upload, organize, and share your photos in beautiful albums. Store your memories in the cloud and share them with friends and family.",
+  "name": "BillGenics - Smart Expense Tracking",
+  "short_name": "BillGenics",
+  "description": "Scan receipts, track expenses, and split bills with friends. Smart categorization, monthly analytics, and group expense management.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -72,6 +72,6 @@
       "form_factor": "narrow"
     }
   ],
-  "categories": ["photography", "social", "lifestyle"],
+  "categories": ["finance", "productivity", "lifestyle"],
   "prefer_related_applications": false
 }

@@ -1,6 +1,6 @@
 # Authentication Setup Guide
 
-This guide explains how to set up and use the authentication system in PicsGenics.
+This guide explains how to set up and use the authentication system in BillGenics.
 
 ## Quick Start
 
@@ -13,7 +13,7 @@ This guide explains how to set up and use the authentication system in PicsGenic
    ```env
    SMTP_USER=your-email@gmail.com
    SMTP_PASSWORD=your-google-app-password
-   SMTP_FROM_NAME=PicsGenics
+   SMTP_FROM_NAME=BillGenics
    ```
 
    ### How to get Google App Password:
@@ -57,8 +57,8 @@ This guide explains how to set up and use the authentication system in PicsGenic
 #### Protected Routes (require authentication)
 - `/account` - User dashboard
 - `/dashboard/*` - Dashboard pages
-- `/albums/*` - Album pages
-- `/photos/*` - Photo pages
+- `/bills/*` - Bill pages
+- `/events/*` - Event pages
 
 ### API Endpoints
 

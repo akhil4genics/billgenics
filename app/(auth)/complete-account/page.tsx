@@ -22,7 +22,7 @@ function CompleteAccountForm() {
 
   useEffect(() => {
     if (!code || !email) {
-      setError('Invalid invitation link. Please contact the person who shared the album with you.');
+      setError('Invalid invitation link. Please contact the person who invited you.');
     }
   }, [code, email]);
 
@@ -142,7 +142,7 @@ function CompleteAccountForm() {
             <div className='mb-8 text-center'>
               <h1 className='text-2xl font-bold text-foreground'>Complete your account</h1>
               <p className='mt-2 text-muted'>
-                Someone shared an album with you! Complete your account setup to view it.
+                You&apos;ve been invited to an event! Complete your account setup to get started.
               </p>
               {email && (
                 <p className='mt-2 text-sm text-primary'>{email}</p>

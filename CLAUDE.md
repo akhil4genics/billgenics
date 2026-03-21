@@ -1,6 +1,6 @@
-# PicsGenics
+# BillGenics
 
-Photo and video album management web application.
+Smart expense tracking, receipt scanning, and bill splitting web application.
 
 ## Architecture
 
@@ -25,7 +25,8 @@ Each has its own `package.json`, `tsconfig.json`, and dependencies.
 - Express.js (wrapped with `serverless-http` for Lambda)
 - Serverless Framework v3 (`serverless.yml`)
 - MongoDB via Mongoose
-- AWS S3 (presigned URLs for upload/download — files never pass through Lambda)
+- AWS S3 (presigned URLs for receipt image storage)
+- OpenAI GPT-4o Vision for receipt scanning/parsing
 - Nodemailer (Gmail SMTP) for transactional emails
 - Zod for input validation
 - bcryptjs for password hashing (12 rounds)
@@ -50,15 +51,22 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 /                           # Next.js frontend (root)
 ├── app/
 │   ├── (auth)/             # Auth pages: signin, signup, forgot-password, reset-password, complete-account
-│   ├── account/            # Account/dashboard page
-│   ├── album/[albumId]/    # Album detail page (upload, download, share)
+│   ├── account/            # Dashboard page (spending summary, category breakdown, recent bills)
+│   ├── bills/              # Bill pages
+│   │   ├── page.tsx        # Bills list (filter by month, category)
+│   │   ├── scan/           # Receipt scanning (camera/upload → AI parse → review → save)
+│   │   ├── new/            # Manual bill entry
+│   │   └── [billId]/       # Bill detail/edit
+│   ├── events/             # Expense splitting events
+│   │   ├── page.tsx        # Events list
+│   │   ├── new/            # Create event
+│   │   └── [eventId]/      # Event detail (expenses, balances, members, settle)
 │   ├── api/auth/           # NextAuth route handler only
-│   ├── components/         # Shared React components
+│   ├── components/         # Shared React components (Header, ThemeProvider)
 │   ├── layout.tsx          # Root layout
 │   └── page.tsx            # Landing/home page
 ├── lib/
-│   ├── api.ts              # apiUrl(), authHeaders(), authBearerHeader() helpers
-│   └── imageCompression.ts # Client-side image compression before upload
+│   └── api.ts              # apiUrl(), authHeaders() helpers
 ├── auth.ts                 # NextAuth config (credentials provider + JWT bridge)
 ├── types/next-auth.d.ts    # Session type augmentation (adds accessToken)
 ├── .env.local              # Frontend env vars
@@ -69,19 +77,30 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 │   │   ├── handler.ts      # Lambda entry point (DB connection + serverless-http wrapper)
 │   │   ├── app.ts          # Express app setup (cors, json, routes)
 │   │   ├── routes/
-│   │   │   ├── index.ts    # Route registration (auth + albums)
+│   │   │   ├── index.ts    # Route registration (auth + bills + events + notifications)
 │   │   │   ├── auth.ts     # Auth routes (all public)
-│   │   │   └── albums.ts   # Album routes (all require JWT auth + ObjectId validation)
+│   │   │   ├── bills.ts    # Bill routes (JWT required)
+│   │   │   ├── events.ts   # Event routes (JWT required)
+│   │   │   └── notifications.ts  # Notification routes (JWT required)
 │   │   ├── controllers/
-│   │   │   ├── auth.controller.ts    # Auth business logic
-│   │   │   └── albums.controller.ts  # Album business logic
+│   │   │   ├── auth.controller.ts          # Auth business logic
+│   │   │   ├── bills.controller.ts         # Bill CRUD + scan + stats
+│   │   │   ├── events.controller.ts        # Event CRUD + expenses + balances + settle
+│   │   │   └── notifications.controller.ts # Notification list + mark read
 │   │   ├── middleware/
-│   │   │   └── auth.ts     # JWT verification middleware + ObjectId validator
-│   │   ├── models/         # Mongoose models: User, Album, AlbumItem
+│   │   │   ├── auth.ts     # JWT verification middleware + ObjectId validator
+│   │   │   └── rateLimiter.ts  # Rate limiting for auth endpoints
+│   │   ├── models/
+│   │   │   ├── User.ts     # User model
+│   │   │   ├── Bill.ts     # Bill/receipt model (items, category, totals)
+│   │   │   ├── Event.ts    # Shared expense event model (members)
+│   │   │   ├── Expense.ts  # Expense within event (splits, settled status)
+│   │   │   └── Notification.ts  # In-app notification model
 │   │   ├── lib/
 │   │   │   ├── db.ts       # MongoDB connection
-│   │   │   ├── s3.ts       # S3 client + presigned URL generation
-│   │   │   └── email.ts    # Nodemailer transporter + email templates
+│   │   │   ├── s3.ts       # S3 client + presigned URL generation (upload + download)
+│   │   │   ├── email.ts    # Nodemailer transporter + email templates
+│   │   │   └── openai.ts   # OpenAI GPT-4o receipt parsing
 │   │   └── shared/
 │   │       └── types.ts    # Shared TypeScript types
 │   └── .env                # Backend env vars
@@ -98,30 +117,53 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 - `POST /api/auth/forgot-password` — Send password reset email
 - `POST /api/auth/reset-password` — Reset password with code
 
-### Albums (protected — JWT required)
-- `GET /api/albums` — List user's albums
-- `POST /api/albums` — Create album
-- `GET /api/albums/stats` — User stats (album count, photo count, storage)
-- `GET /api/albums/:albumId` — Get album with paginated items
-- `POST /api/albums/:albumId/upload-url` — Get S3 presigned upload URLs (batch up to 10)
-- `POST /api/albums/:albumId/upload-complete` — Save upload metadata to DB
-- `POST /api/albums/:albumId/items/delete` — Soft-delete items
-- `GET /api/albums/:albumId/items/download` — Get S3 presigned download URL
-- `POST /api/albums/:albumId/share` — Share album with user (sends email)
-- `GET /api/albums/:albumId/share` — List shared users
-- `PATCH /api/albums/:albumId/share` — Update shared user role
-- `DELETE /api/albums/:albumId/share` — Revoke user access
+### Bills (protected — JWT required)
+- `GET /api/bills` — List user's bills (filter by month, year, category; paginated)
+- `POST /api/bills` — Create bill manually
+- `POST /api/bills/scan` — Scan receipt image via OpenAI, returns parsed data
+- `GET /api/bills/stats` — Monthly summary (total spent, bill count, category breakdown)
+- `GET /api/bills/:billId` — Get bill details
+- `PUT /api/bills/:billId` — Update bill
+- `DELETE /api/bills/:billId` — Soft delete bill
+- `POST /api/bills/:billId/upload-receipt` — Get S3 presigned upload URL for receipt image
+- `POST /api/bills/:billId/upload-complete` — Confirm receipt image upload
 
-## File Upload/Download Flow
+### Events (protected — JWT required)
+- `GET /api/events` — List user's events
+- `POST /api/events` — Create event
+- `GET /api/events/:eventId` — Get event with expenses
+- `POST /api/events/:eventId/expenses` — Add expense to event
+- `PUT /api/events/:eventId/expenses/:expenseId` — Update expense
+- `DELETE /api/events/:eventId/expenses/:expenseId` — Delete expense
+- `POST /api/events/:eventId/invite` — Invite user by email
+- `GET /api/events/:eventId/balances` — Calculate who owes whom
+- `POST /api/events/:eventId/settle` — Mark settlement between users
 
-**Uploads** (files never pass through Lambda):
-1. Frontend requests presigned upload URLs from `POST /upload-url`
-2. Frontend PUTs files directly to S3
-3. Frontend confirms via `POST /upload-complete` (metadata only)
+### Notifications (protected — JWT required)
+- `GET /api/notifications` — List notifications (with unread count)
+- `PATCH /api/notifications/:id/read` — Mark notification as read
+- `PATCH /api/notifications/read-all` — Mark all as read
 
-**Downloads** (files never pass through Lambda):
-1. Frontend requests presigned download URL from `GET /items/download`
-2. Frontend fetches file directly from S3
+## Receipt Scanning Flow
+
+1. User uploads/captures receipt image on frontend
+2. Frontend sends base64 image to `POST /api/bills/scan`
+3. Backend sends image to OpenAI GPT-4o Vision API
+4. OpenAI returns structured data: store name, ABN, items, totals, date, category
+5. Frontend displays parsed data for user to review/edit
+6. User confirms → `POST /api/bills` saves to database
+
+## Expense Splitting Flow
+
+1. User creates an event → `POST /api/events`
+2. Invites members by email → `POST /api/events/:id/invite`
+3. Members add expenses → `POST /api/events/:id/expenses`
+4. View balances (who owes whom) → `GET /api/events/:id/balances`
+5. Mark settlement → `POST /api/events/:id/settle` (notifies other party)
+
+## Bill Categories
+
+grocery, electronics, telephone, dining, transport, health, utilities, entertainment, clothing, other
 
 ## Environment Variables
 
@@ -138,6 +180,7 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 - `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_NAME` — Email (Gmail SMTP)
 - `FRONTEND_URL` — For email links and CORS origin
 - `BACKEND_URL` — For verification email links
+- `OPENAI_API_KEY` — OpenAI API key for receipt scanning
 
 ## Development
 
@@ -165,9 +208,11 @@ npm run deploy:prod         # deploys to prod stage
 
 ## Key Design Decisions
 
-- **Presigned URLs for all S3 operations** — avoids Lambda's 6MB payload limit and reduces Lambda execution time
-- **Single Lambda function** — all routes handled by one function via `serverless-http` wrapping Express. Simpler cold start management vs individual function-per-route.
-- **MongoDB connection caching** — `handler.ts` maintains a module-level `isConnected` flag to avoid reconnecting on warm Lambda invocations
-- **ObjectId validation middleware** — all `:albumId` params validated before hitting controllers
+- **Presigned URLs for receipt images** — avoids Lambda's 6MB payload limit
+- **Single Lambda function** — all routes handled by one function via `serverless-http` wrapping Express
+- **MongoDB connection caching** — `handler.ts` maintains a module-level `isConnected` flag
+- **ObjectId validation middleware** — all param IDs validated before hitting controllers
 - **Pagination capped at 100** — prevents abuse via large limit values
+- **Soft delete for bills** — status field (active/deleted)
+- **Greedy debt simplification** — balances calculated using greedy algorithm to minimize transactions
 - **`@backend/*` path alias** — frontend can import shared types from backend via `@backend/shared/types`
