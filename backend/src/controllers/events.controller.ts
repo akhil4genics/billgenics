@@ -87,7 +87,7 @@ export async function createEvent(req: AuthRequest, res: Response): Promise<void
     res.status(201).json({ success: true, data: event });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: 'Validation failed', details: error.errors });
+      res.status(400).json({ error: 'Validation failed', details: error.issues });
       return;
     }
     console.error('Error creating event:', error);
@@ -167,7 +167,7 @@ export async function addExpense(req: AuthRequest, res: Response): Promise<void>
     res.status(201).json({ success: true, data: expense });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: 'Validation failed', details: error.errors });
+      res.status(400).json({ error: 'Validation failed', details: error.issues });
       return;
     }
     console.error('Error adding expense:', error);
@@ -213,7 +213,7 @@ export async function updateExpense(req: AuthRequest, res: Response): Promise<vo
     res.json({ success: true, data: expense });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: 'Validation failed', details: error.errors });
+      res.status(400).json({ error: 'Validation failed', details: error.issues });
       return;
     }
     console.error('Error updating expense:', error);
@@ -283,7 +283,7 @@ export async function inviteMember(req: AuthRequest, res: Response): Promise<voi
     if (invitee) {
       // Existing user
       event.members.push({
-        userId: invitee._id as mongoose.Types.ObjectId,
+        userId: invitee._id as unknown as mongoose.Schema.Types.ObjectId,
         email: invitee.email,
         name: invitee.name,
         status: EMemberStatus.ACTIVE,
@@ -330,7 +330,7 @@ export async function inviteMember(req: AuthRequest, res: Response): Promise<voi
     res.json({ success: true, data: event });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: 'Validation failed', details: error.errors });
+      res.status(400).json({ error: 'Validation failed', details: error.issues });
       return;
     }
     console.error('Error inviting member:', error);
@@ -469,7 +469,7 @@ export async function settleBalance(req: AuthRequest, res: Response): Promise<vo
     res.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      res.status(400).json({ error: 'Validation failed', details: error.errors });
+      res.status(400).json({ error: 'Validation failed', details: error.issues });
       return;
     }
     console.error('Error settling balance:', error);
