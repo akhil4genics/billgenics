@@ -30,6 +30,18 @@ export interface IBillItem {
   total: number;
 }
 
+export interface IBillAttachment {
+  key: string;
+  filename: string;
+  contentType: string;
+  size?: number;
+}
+
+export interface IBillWarranty {
+  expiryDate?: Date;
+  details?: string;
+}
+
 export interface IBillModel extends Document {
   userId: Schema.Types.ObjectId;
   storeName: string;
@@ -44,6 +56,9 @@ export interface IBillModel extends Document {
   paymentMethod?: string;
   notes?: string;
   receiptImageKey?: string;
+  tags: string[];
+  warranty?: IBillWarranty;
+  attachments: IBillAttachment[];
   entryMethod: EEntryMethod;
   status: EBillStatus;
   createdAt: Date;
@@ -56,6 +71,24 @@ const BillItemSchema = new Schema<IBillItem>(
     quantity: { type: Number, required: true, default: 1 },
     unitPrice: { type: Number, required: true },
     total: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
+const BillAttachmentSchema = new Schema<IBillAttachment>(
+  {
+    key: { type: String, required: true },
+    filename: { type: String, required: true },
+    contentType: { type: String, required: true },
+    size: { type: Number },
+  },
+  { _id: false }
+);
+
+const BillWarrantySchema = new Schema<IBillWarranty>(
+  {
+    expiryDate: { type: Date },
+    details: { type: String, trim: true },
   },
   { _id: false }
 );
@@ -75,6 +108,9 @@ const BillSchema = new Schema<IBillModel>(
     paymentMethod: { type: String, trim: true },
     notes: { type: String, trim: true },
     receiptImageKey: { type: String },
+    tags: { type: [String], default: [] },
+    warranty: { type: BillWarrantySchema },
+    attachments: { type: [BillAttachmentSchema], default: [] },
     entryMethod: { type: String, enum: Object.values(EEntryMethod), required: true },
     status: { type: String, enum: Object.values(EBillStatus), default: EBillStatus.ACTIVE, required: true },
   },
@@ -83,6 +119,12 @@ const BillSchema = new Schema<IBillModel>(
 
 BillSchema.index({ userId: 1, date: -1 });
 BillSchema.index({ userId: 1, category: 1 });
+BillSchema.index({ userId: 1, tags: 1 });
+BillSchema.index({ userId: 1, 'warranty.expiryDate': 1 });
+BillSchema.index(
+  { storeName: 'text', 'items.name': 'text', tags: 'text', notes: 'text', 'warranty.details': 'text' },
+  { weights: { storeName: 10, tags: 8, 'items.name': 5, notes: 2, 'warranty.details': 2 } }
+);
 
 const Bill: Model<IBillModel> = mongoose.models.Bill || mongoose.model<IBillModel>('Bill', BillSchema);
 

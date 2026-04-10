@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { apiUrl, authHeaders } from '@/lib/api';
 import { EBillCategory } from '@backend/shared/types';
@@ -33,6 +33,7 @@ interface Bill {
   total: number;
   category: string;
   entryMethod: string;
+  tags: string[];
   items: { name: string; total: number }[];
 }
 
@@ -45,22 +46,38 @@ export default function BillsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+      setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     if (status === 'authenticated') fetchBills();
-  }, [status, page, selectedCategory, selectedMonth, selectedYear]);
+  }, [status, page, selectedCategory, selectedMonth, selectedYear, debouncedQuery]);
 
-  async function fetchBills() {
+  const fetchBills = useCallback(async () => {
     try {
       setLoading(true);
       const headers = await authHeaders();
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '20',
-        month: selectedMonth.toString(),
-        year: selectedYear.toString(),
       });
+
+      // Only add date filters when not searching (search should span all time)
+      if (!debouncedQuery) {
+        params.set('month', selectedMonth.toString());
+        params.set('year', selectedYear.toString());
+      }
       if (selectedCategory) params.set('category', selectedCategory);
+      if (debouncedQuery) params.set('q', debouncedQuery);
 
       const res = await fetch(`${apiUrl()}/api/bills?${params}`, { headers });
       if (res.ok) {
@@ -73,7 +90,7 @@ export default function BillsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [status, page, selectedCategory, selectedMonth, selectedYear, debouncedQuery]);
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -101,26 +118,56 @@ export default function BillsPage() {
           </div>
         </div>
 
+        {/* Search */}
+        <div className='mb-4'>
+          <div className='relative'>
+            <svg className='absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted' fill='none' viewBox='0 0 24 24' strokeWidth={2} stroke='currentColor'>
+              <path strokeLinecap='round' strokeLinejoin='round' d='m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z' />
+            </svg>
+            <input
+              type='text'
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder='Search by store name, items, tags, warranty...'
+              className='w-full rounded-lg border border-border bg-card py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary'
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className='absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-foreground'
+              >
+                <svg className='h-4 w-4' fill='none' viewBox='0 0 24 24' strokeWidth={2} stroke='currentColor'>
+                  <path strokeLinecap='round' strokeLinejoin='round' d='M6 18 18 6M6 6l12 12' />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Filters */}
         <div className='mb-6 flex flex-wrap items-center gap-3'>
-          <select
-            value={selectedMonth}
-            onChange={(e) => { setSelectedMonth(parseInt(e.target.value)); setPage(1); }}
-            className='rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground'
-          >
-            {months.map((m, i) => (
-              <option key={i} value={i + 1}>{m}</option>
-            ))}
-          </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => { setSelectedYear(parseInt(e.target.value)); setPage(1); }}
-            className='rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground'
-          >
-            {[2024, 2025, 2026, 2027].map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
+          {!debouncedQuery && (
+            <>
+              <select
+                value={selectedMonth}
+                onChange={(e) => { setSelectedMonth(parseInt(e.target.value)); setPage(1); }}
+                className='rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground'
+              >
+                {months.map((m, i) => (
+                  <option key={i} value={i + 1}>{m}</option>
+                ))}
+              </select>
+              <select
+                value={selectedYear}
+                onChange={(e) => { setSelectedYear(parseInt(e.target.value)); setPage(1); }}
+                className='rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground'
+              >
+                {[2024, 2025, 2026, 2027].map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </>
+          )}
           <select
             value={selectedCategory}
             onChange={(e) => { setSelectedCategory(e.target.value); setPage(1); }}
@@ -131,6 +178,11 @@ export default function BillsPage() {
               <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
             ))}
           </select>
+          {debouncedQuery && (
+            <span className='text-sm text-muted'>
+              Searching across all dates
+            </span>
+          )}
         </div>
 
         {/* Bills List */}
@@ -147,8 +199,8 @@ export default function BillsPage() {
                   href={`/bills/${bill._id}`}
                   className='flex items-center justify-between rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md'
                 >
-                  <div className='flex-1'>
-                    <div className='flex items-center gap-2'>
+                  <div className='min-w-0 flex-1'>
+                    <div className='flex flex-wrap items-center gap-2'>
                       <p className='font-semibold text-foreground'>{bill.storeName}</p>
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${CATEGORY_COLORS[bill.category] || CATEGORY_COLORS.other}`}>
                         {CATEGORY_LABELS[bill.category] || bill.category}
@@ -158,8 +210,21 @@ export default function BillsPage() {
                       {new Date(bill.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                       {bill.items?.length ? ` \u00B7 ${bill.items.length} items` : ''}
                     </p>
+                    {bill.tags?.length > 0 && (
+                      <div className='mt-1.5 flex flex-wrap gap-1'>
+                        {bill.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            onClick={(e) => { e.preventDefault(); setSearchQuery(tag); }}
+                            className='cursor-pointer rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary hover:bg-primary/20'
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <p className='text-lg font-bold text-foreground'>${bill.total.toFixed(2)}</p>
+                  <p className='ml-4 shrink-0 text-lg font-bold text-foreground'>${bill.total.toFixed(2)}</p>
                 </Link>
               ))}
             </div>
@@ -187,8 +252,12 @@ export default function BillsPage() {
           </>
         ) : (
           <div className='rounded-xl border border-dashed border-border py-16 text-center'>
-            <p className='text-lg text-muted'>No bills found for this period</p>
-            <p className='mt-2 text-sm text-muted'>Scan a receipt or add a bill manually to get started</p>
+            <p className='text-lg text-muted'>
+              {debouncedQuery ? `No bills matching "${debouncedQuery}"` : 'No bills found for this period'}
+            </p>
+            <p className='mt-2 text-sm text-muted'>
+              {debouncedQuery ? 'Try different search terms' : 'Scan a receipt or add a bill manually to get started'}
+            </p>
           </div>
         )}
       </div>

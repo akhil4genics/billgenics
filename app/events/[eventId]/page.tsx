@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-import { apiUrl, authHeaders } from '@/lib/api';
+import { apiUrl } from '@/lib/api';
 import { EBillCategory } from '@backend/shared/types';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -54,7 +54,7 @@ interface Balance {
 }
 
 export default function EventDetailPage() {
-  const { data: session } = useSession({ required: true });
+  const { data: session, status } = useSession({ required: true });
   const params = useParams();
   const eventId = params.eventId as string;
 
@@ -77,14 +77,20 @@ export default function EventDetailPage() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviting, setInviting] = useState(false);
 
+  function getHeaders() {
+    const accessToken = (session as unknown as { accessToken?: string })?.accessToken || '';
+    return { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` };
+  }
+
   useEffect(() => {
-    if (session) fetchAll();
-  }, [session, eventId]);
+    if (status === 'authenticated') fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, eventId]);
 
   async function fetchAll() {
     try {
       setLoading(true);
-      const headers = await authHeaders();
+      const headers = getHeaders();
 
       const [eventRes, balanceRes] = await Promise.all([
         fetch(`${apiUrl()}/api/events/${eventId}`, { headers }),
@@ -136,14 +142,14 @@ export default function EventDetailPage() {
 
     try {
       setAddingExpense(true);
-      const headers = await authHeaders();
+      const headers = getHeaders();
 
       const currentUserId = (session as unknown as { user: { id: string } }).user?.id ||
         event.members.find((m) => m.email === session.user?.email)?.userId;
 
       const res = await fetch(`${apiUrl()}/api/events/${eventId}/expenses`, {
         method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           description: expDesc.trim(),
           amount,
@@ -175,11 +181,11 @@ export default function EventDetailPage() {
 
     try {
       setInviting(true);
-      const headers = await authHeaders();
+      const headers = getHeaders();
 
       const res = await fetch(`${apiUrl()}/api/events/${eventId}/invite`, {
         method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ email: inviteEmail.trim() }),
       });
 
@@ -201,10 +207,10 @@ export default function EventDetailPage() {
 
   async function handleSettle(balance: Balance) {
     try {
-      const headers = await authHeaders();
+      const headers = getHeaders();
       const res = await fetch(`${apiUrl()}/api/events/${eventId}/settle`, {
         method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ toUserId: balance.to.userId, amount: balance.amount }),
       });
 

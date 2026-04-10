@@ -3,7 +3,7 @@ import { z } from 'zod';
 import mongoose from 'mongoose';
 import { AuthRequest } from '../middleware/auth';
 import Bill, { EBillCategory, EBillStatus, EEntryMethod } from '../models/Bill';
-import { getPresignedUploadUrl } from '../lib/s3';
+import { getPresignedUploadUrl, getPresignedUrl } from '../lib/s3';
 import { parseReceiptImage } from '../lib/openai';
 
 const billItemSchema = z.object({
@@ -11,6 +11,18 @@ const billItemSchema = z.object({
   quantity: z.number().positive().default(1),
   unitPrice: z.number().min(0),
   total: z.number().min(0),
+});
+
+const billAttachmentSchema = z.object({
+  key: z.string().min(1),
+  filename: z.string().min(1),
+  contentType: z.string().min(1),
+  size: z.number().optional(),
+});
+
+const billWarrantySchema = z.object({
+  expiryDate: z.string().refine((d) => !isNaN(Date.parse(d)), 'Invalid date').optional(),
+  details: z.string().max(1000).optional(),
 });
 
 const createBillSchema = z.object({
@@ -27,6 +39,9 @@ const createBillSchema = z.object({
   notes: z.string().max(1000).optional(),
   entryMethod: z.nativeEnum(EEntryMethod),
   receiptImageKey: z.string().optional(),
+  tags: z.array(z.string().max(50)).max(20).default([]),
+  warranty: billWarrantySchema.optional(),
+  attachments: z.array(billAttachmentSchema).default([]),
 });
 
 const updateBillSchema = createBillSchema.partial();
@@ -34,9 +49,16 @@ const updateBillSchema = createBillSchema.partial();
 export async function listBills(req: AuthRequest, res: Response): Promise<void> {
   try {
     const userId = req.user!.id;
-    const { month, year, category, page = '1', limit = '20' } = req.query;
+    const { month, year, category, page = '1', limit = '20', q } = req.query;
 
     const filter: Record<string, unknown> = { userId, status: EBillStatus.ACTIVE };
+
+    // Text search
+    if (q && typeof q === 'string' && q.trim()) {
+      const searchTerm = q.trim();
+      // Use MongoDB text index for full-text search
+      filter.$text = { $search: searchTerm };
+    }
 
     if (month && year) {
       const m = parseInt(month as string, 10);
@@ -57,8 +79,17 @@ export async function listBills(req: AuthRequest, res: Response): Promise<void> 
     const limitNum = Math.min(100, Math.max(1, parseInt(limit as string, 10) || 20));
     const skip = (pageNum - 1) * limitNum;
 
+    const query = Bill.find(filter).skip(skip).limit(limitNum);
+
+    if (q) {
+      query.select({ score: { $meta: 'textScore' } });
+      query.sort({ score: { $meta: 'textScore' }, date: -1 });
+    } else {
+      query.sort({ date: -1 });
+    }
+
     const [bills, total] = await Promise.all([
-      Bill.find(filter).sort({ date: -1 }).skip(skip).limit(limitNum).lean(),
+      query.lean(),
       Bill.countDocuments(filter),
     ]);
 
@@ -74,11 +105,21 @@ export async function createBill(req: AuthRequest, res: Response): Promise<void>
     const userId = req.user!.id;
     const parsed = createBillSchema.parse(req.body);
 
-    const bill = await Bill.create({
+    const billData: Record<string, unknown> = {
       ...parsed,
       userId,
       date: new Date(parsed.date),
-    });
+      tags: parsed.tags.map((t) => t.trim().toLowerCase()).filter(Boolean),
+    };
+
+    if (parsed.warranty?.expiryDate) {
+      billData.warranty = {
+        ...parsed.warranty,
+        expiryDate: new Date(parsed.warranty.expiryDate),
+      };
+    }
+
+    const bill = await Bill.create(billData);
 
     res.status(201).json({ success: true, data: bill });
   } catch (error) {
@@ -173,7 +214,23 @@ export async function getBill(req: AuthRequest, res: Response): Promise<void> {
       return;
     }
 
-    res.json({ success: true, data: bill });
+    // Generate presigned URLs for receipt and attachments
+    let receiptImageUrl: string | undefined;
+    if (bill.receiptImageKey) {
+      receiptImageUrl = await getPresignedUrl(bill.receiptImageKey);
+    }
+
+    const attachmentsWithUrls = await Promise.all(
+      (bill.attachments || []).map(async (att) => ({
+        ...att,
+        url: await getPresignedUrl(att.key),
+      }))
+    );
+
+    res.json({
+      success: true,
+      data: { ...bill, receiptImageUrl, attachments: attachmentsWithUrls },
+    });
   } catch (error) {
     console.error('Error getting bill:', error);
     res.status(500).json({ error: 'Failed to get bill' });
@@ -189,6 +246,15 @@ export async function updateBill(req: AuthRequest, res: Response): Promise<void>
     const updateData: Record<string, unknown> = { ...parsed };
     if (parsed.date) {
       updateData.date = new Date(parsed.date);
+    }
+    if (parsed.tags) {
+      updateData.tags = parsed.tags.map((t) => t.trim().toLowerCase()).filter(Boolean);
+    }
+    if (parsed.warranty?.expiryDate) {
+      updateData.warranty = {
+        ...parsed.warranty,
+        expiryDate: new Date(parsed.warranty.expiryDate),
+      };
     }
 
     const bill = await Bill.findOneAndUpdate(
@@ -236,6 +302,88 @@ export async function deleteBill(req: AuthRequest, res: Response): Promise<void>
   }
 }
 
+export async function getUploadUrl(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.id;
+    const { billId } = req.params;
+    const { contentType = 'image/jpeg', filename = 'file' } = req.body;
+
+    const bill = await Bill.findOne({ _id: billId, userId, status: EBillStatus.ACTIVE });
+    if (!bill) {
+      res.status(404).json({ error: 'Bill not found' });
+      return;
+    }
+
+    const ext = filename.split('.').pop() || contentType.split('/').pop() || 'bin';
+    const key = `attachments/${userId}/${billId}/${Date.now()}.${ext}`;
+    const uploadUrl = await getPresignedUploadUrl(key, contentType);
+
+    res.json({ success: true, data: { uploadUrl, key } });
+  } catch (error) {
+    console.error('Error getting upload URL:', error);
+    res.status(500).json({ error: 'Failed to generate upload URL' });
+  }
+}
+
+export async function addAttachment(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.id;
+    const { billId } = req.params;
+    const { key, filename, contentType, size } = req.body;
+
+    if (!key || !filename || !contentType) {
+      res.status(400).json({ error: 'key, filename, and contentType are required' });
+      return;
+    }
+
+    const bill = await Bill.findOneAndUpdate(
+      { _id: billId, userId, status: EBillStatus.ACTIVE },
+      { $push: { attachments: { key, filename, contentType, size } } },
+      { new: true }
+    ).lean();
+
+    if (!bill) {
+      res.status(404).json({ error: 'Bill not found' });
+      return;
+    }
+
+    res.json({ success: true, data: bill });
+  } catch (error) {
+    console.error('Error adding attachment:', error);
+    res.status(500).json({ error: 'Failed to add attachment' });
+  }
+}
+
+export async function removeAttachment(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.id;
+    const { billId } = req.params;
+    const { key } = req.body;
+
+    if (!key) {
+      res.status(400).json({ error: 'Attachment key is required' });
+      return;
+    }
+
+    const bill = await Bill.findOneAndUpdate(
+      { _id: billId, userId, status: EBillStatus.ACTIVE },
+      { $pull: { attachments: { key } } },
+      { new: true }
+    ).lean();
+
+    if (!bill) {
+      res.status(404).json({ error: 'Bill not found' });
+      return;
+    }
+
+    res.json({ success: true, data: bill });
+  } catch (error) {
+    console.error('Error removing attachment:', error);
+    res.status(500).json({ error: 'Failed to remove attachment' });
+  }
+}
+
+// Legacy receipt upload endpoints (kept for backward compat)
 export async function getUploadReceiptUrl(req: AuthRequest, res: Response): Promise<void> {
   try {
     const userId = req.user!.id;

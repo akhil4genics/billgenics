@@ -92,6 +92,7 @@ export default function ScanBillPage() {
       setSaving(true);
       const headers = await authHeaders();
 
+      // 1. Create the bill
       const res = await fetch(`${apiUrl()}/api/bills`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
@@ -102,6 +103,42 @@ export default function ScanBillPage() {
       });
 
       if (!res.ok) throw new Error('Save failed');
+      const { data: bill } = await res.json();
+
+      // 2. Upload scanned receipt image if we have a preview
+      if (preview && bill._id) {
+        try {
+          const isDataUrl = preview.startsWith('data:');
+          const contentType = isDataUrl ? (preview.match(/data:(.*?);/)?.[1] || 'image/jpeg') : 'image/jpeg';
+          const ext = contentType === 'image/png' ? 'png' : 'jpg';
+
+          // Get presigned upload URL
+          const urlRes = await fetch(`${apiUrl()}/api/bills/${bill._id}/upload-receipt`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contentType }),
+          });
+
+          if (urlRes.ok) {
+            const { data: { uploadUrl, key } } = await urlRes.json();
+
+            // Convert base64 to blob and upload
+            const response = await fetch(preview);
+            const blob = await response.blob();
+            await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: blob });
+
+            // Mark upload complete
+            await fetch(`${apiUrl()}/api/bills/${bill._id}/upload-complete`, {
+              method: 'POST',
+              headers: { ...headers, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ key }),
+            });
+          }
+        } catch {
+          // Non-critical — bill is already saved, receipt upload is best-effort
+          console.error('Failed to upload receipt image');
+        }
+      }
 
       toast.success('Bill saved!');
       router.push('/bills');

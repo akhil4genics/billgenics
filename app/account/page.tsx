@@ -157,7 +157,7 @@ export default function AccountPage() {
               alt='BillGenics'
               width={560}
               height={160}
-              className='h-28 w-auto'
+              className='h-10 w-auto'
             />
           </Link>
 

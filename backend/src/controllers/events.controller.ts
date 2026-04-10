@@ -1,6 +1,8 @@
 import { Response } from 'express';
 import { z } from 'zod';
+import crypto from 'crypto';
 import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
 import { AuthRequest } from '../middleware/auth';
 import Event, { EEventStatus, EMemberStatus } from '../models/Event';
 import Expense, { ESplitType } from '../models/Expense';
@@ -73,10 +75,10 @@ export async function createEvent(req: AuthRequest, res: Response): Promise<void
 
     const event = await Event.create({
       ...parsed,
-      createdBy: userId,
+      createdBy: new mongoose.Types.ObjectId(userId),
       members: [
         {
-          userId,
+          userId: new mongoose.Types.ObjectId(userId),
           email: user.email,
           name: user.name,
           status: EMemberStatus.ACTIVE,
@@ -131,7 +133,7 @@ export async function addExpense(req: AuthRequest, res: Response): Promise<void>
 
     const event = await Event.findOne({
       _id: eventId,
-      $or: [{ createdBy: userId }, { 'members.userId': userId }],
+      $or: [{ createdBy: userId }, { 'members.userId': userId }, { 'members.email': req.user!.email }],
     });
 
     if (!event) {
@@ -183,7 +185,7 @@ export async function updateExpense(req: AuthRequest, res: Response): Promise<vo
 
     const event = await Event.findOne({
       _id: eventId,
-      $or: [{ createdBy: userId }, { 'members.userId': userId }],
+      $or: [{ createdBy: userId }, { 'members.userId': userId }, { 'members.email': req.user!.email }],
     });
 
     if (!event) {
@@ -228,7 +230,7 @@ export async function deleteExpense(req: AuthRequest, res: Response): Promise<vo
 
     const event = await Event.findOne({
       _id: eventId,
-      $or: [{ createdBy: userId }, { 'members.userId': userId }],
+      $or: [{ createdBy: userId }, { 'members.userId': userId }, { 'members.email': req.user!.email }],
     });
 
     if (!event) {
@@ -258,7 +260,7 @@ export async function inviteMember(req: AuthRequest, res: Response): Promise<voi
 
     const event = await Event.findOne({
       _id: eventId,
-      $or: [{ createdBy: userId }, { 'members.userId': userId }],
+      $or: [{ createdBy: userId }, { 'members.userId': userId }, { 'members.email': req.user!.email }],
     });
 
     if (!event) {
@@ -306,20 +308,42 @@ export async function inviteMember(req: AuthRequest, res: Response): Promise<voi
         html: generateEventInviteEmail(invitee.name, inviter?.name || 'A user', event.name, eventLink),
       });
     } else {
-      // New user — add with invited status
+      // New user — create an unactivated account with registration code
+      const registrationCode = crypto.randomBytes(32).toString('hex');
+      const codeExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      const emailLower = parsed.email.toLowerCase();
+      const placeholderName = emailLower.split('@')[0];
+      const placeholderPassword = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 12);
+
+      const newUser = await User.create({
+        firstName: placeholderName,
+        lastName: 'Invited',
+        username: emailLower,
+        email: emailLower,
+        password: placeholderPassword,
+        name: placeholderName,
+        activated: false,
+        userVerified: false,
+        loginSession: {
+          registrationCode,
+          registrationCodeExpiresAt: codeExpiry,
+        },
+      });
+
       event.members.push({
-        email: parsed.email.toLowerCase(),
-        name: parsed.email.split('@')[0],
+        userId: newUser._id as unknown as mongoose.Schema.Types.ObjectId,
+        email: emailLower,
+        name: placeholderName,
         status: EMemberStatus.INVITED,
       });
       await event.save();
 
-      const completeAccountLink = `${frontendUrl}/complete-account?email=${encodeURIComponent(parsed.email)}`;
+      const completeAccountLink = `${frontendUrl}/complete-account?email=${encodeURIComponent(emailLower)}&code=${registrationCode}`;
       await sendEmail({
-        to: parsed.email,
+        to: emailLower,
         subject: `You've been invited to "${event.name}" on BillGenics`,
         html: generateEventInviteNewUserEmail(
-          parsed.email,
+          emailLower,
           inviter?.name || 'A user',
           event.name,
           completeAccountLink
@@ -345,7 +369,7 @@ export async function getBalances(req: AuthRequest, res: Response): Promise<void
 
     const event = await Event.findOne({
       _id: eventId,
-      $or: [{ createdBy: userId }, { 'members.userId': userId }],
+      $or: [{ createdBy: userId }, { 'members.userId': userId }, { 'members.email': req.user!.email }],
     }).lean();
 
     if (!event) {
@@ -428,7 +452,7 @@ export async function settleBalance(req: AuthRequest, res: Response): Promise<vo
 
     const event = await Event.findOne({
       _id: eventId,
-      $or: [{ createdBy: userId }, { 'members.userId': userId }],
+      $or: [{ createdBy: userId }, { 'members.userId': userId }, { 'members.email': req.user!.email }],
     });
 
     if (!event) {

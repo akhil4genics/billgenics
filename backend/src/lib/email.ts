@@ -22,7 +22,12 @@ const getEmailHeader = () => `
       <table role="presentation" style="width: 100%; border-collapse: collapse;">
         <tr>
           <td align="center" style="padding: 40px 20px;">
-            <img src="${getBaseUrl()}/images/billgenics.png" alt="BillGenics" style="height: 180px; width: auto;" />
+            <a href="${getBaseUrl()}" style="text-decoration: none;">
+              <h1 style="margin: 0; font-size: 32px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">
+                <span style="display: inline-block; width: 40px; height: 40px; background-color: rgba(255,255,255,0.2); border-radius: 10px; text-align: center; line-height: 40px; font-size: 22px; margin-right: 10px; vertical-align: middle;">B</span>
+                BillGenics
+              </h1>
+            </a>
           </td>
         </tr>
       </table>

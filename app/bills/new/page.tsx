@@ -37,6 +37,10 @@ export default function NewBillPage() {
   const [total, setTotal] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [notes, setNotes] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [warrantyExpiry, setWarrantyExpiry] = useState('');
+  const [warrantyDetails, setWarrantyDetails] = useState('');
 
   function updateItem(index: number, field: string, value: string | number) {
     const updated = [...items];
@@ -95,6 +99,11 @@ export default function NewBillPage() {
           total,
           paymentMethod: paymentMethod.trim() || undefined,
           notes: notes.trim() || undefined,
+          tags,
+          warranty: (warrantyExpiry || warrantyDetails.trim()) ? {
+            expiryDate: warrantyExpiry || undefined,
+            details: warrantyDetails.trim() || undefined,
+          } : undefined,
           entryMethod: 'manual',
         }),
       });
@@ -188,39 +197,44 @@ export default function NewBillPage() {
             </div>
             <div className='mt-3 space-y-2'>
               {items.map((item, i) => (
-                <div key={i} className='flex items-center gap-2 rounded-lg border border-border bg-card p-3'>
-                  <input
-                    type='text'
-                    value={item.name}
-                    onChange={(e) => updateItem(i, 'name', e.target.value)}
-                    placeholder='Item name'
-                    className='flex-1 bg-transparent text-sm text-foreground outline-none'
-                  />
-                  <input
-                    type='number'
-                    value={item.quantity}
-                    onChange={(e) => updateItem(i, 'quantity', parseFloat(e.target.value) || 0)}
-                    className='w-16 rounded border border-border bg-background px-2 py-1 text-center text-sm text-foreground'
-                    min='0'
-                    step='1'
-                  />
-                  <span className='text-sm text-muted'>x $</span>
-                  <input
-                    type='number'
-                    value={item.unitPrice}
-                    onChange={(e) => updateItem(i, 'unitPrice', parseFloat(e.target.value) || 0)}
-                    className='w-20 rounded border border-border bg-background px-2 py-1 text-sm text-foreground'
-                    min='0'
-                    step='0.01'
-                  />
-                  <span className='w-20 text-right text-sm font-medium text-foreground'>${item.total.toFixed(2)}</span>
-                  {items.length > 1 && (
-                    <button type='button' onClick={() => removeItem(i)} className='text-red-500 hover:text-red-600'>
-                      <svg className='h-4 w-4' fill='none' viewBox='0 0 24 24' strokeWidth={2} stroke='currentColor'>
-                        <path strokeLinecap='round' strokeLinejoin='round' d='M6 18 18 6M6 6l12 12' />
-                      </svg>
-                    </button>
-                  )}
+                <div key={i} className='rounded-lg border border-border bg-card p-3'>
+                  <div className='flex items-center gap-2'>
+                    <input
+                      type='text'
+                      value={item.name}
+                      onChange={(e) => updateItem(i, 'name', e.target.value)}
+                      placeholder='Item name'
+                      className='min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none'
+                    />
+                    {items.length > 1 && (
+                      <button type='button' onClick={() => removeItem(i)} className='shrink-0 text-red-500 hover:text-red-600'>
+                        <svg className='h-4 w-4' fill='none' viewBox='0 0 24 24' strokeWidth={2} stroke='currentColor'>
+                          <path strokeLinecap='round' strokeLinejoin='round' d='M6 18 18 6M6 6l12 12' />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  <div className='mt-2 flex items-center gap-2'>
+                    <label className='text-xs text-muted'>Qty</label>
+                    <input
+                      type='number'
+                      value={item.quantity}
+                      onChange={(e) => updateItem(i, 'quantity', parseFloat(e.target.value) || 0)}
+                      className='w-16 rounded border border-border bg-background px-2 py-1 text-center text-sm text-foreground'
+                      min='0'
+                      step='1'
+                    />
+                    <span className='text-sm text-muted'>x $</span>
+                    <input
+                      type='number'
+                      value={item.unitPrice}
+                      onChange={(e) => updateItem(i, 'unitPrice', parseFloat(e.target.value) || 0)}
+                      className='w-20 min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-sm text-foreground'
+                      min='0'
+                      step='0.01'
+                    />
+                    <span className='shrink-0 text-right text-sm font-medium text-foreground'>${item.total.toFixed(2)}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -258,6 +272,73 @@ export default function NewBillPage() {
                 step='0.01'
                 required
               />
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className='block text-sm font-medium text-foreground'>Tags</label>
+            <div className='mt-1 flex flex-wrap gap-1'>
+              {tags.map((tag) => (
+                <span key={tag} className='flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary'>
+                  {tag}
+                  <button type='button' onClick={() => setTags(tags.filter((t) => t !== tag))} className='hover:text-red-500'>
+                    <svg className='h-3 w-3' fill='none' viewBox='0 0 24 24' strokeWidth={2} stroke='currentColor'><path strokeLinecap='round' strokeLinejoin='round' d='M6 18 18 6M6 6l12 12' /></svg>
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className='mt-2 flex gap-2'>
+              <input
+                type='text'
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const tag = tagInput.trim().toLowerCase();
+                    if (tag && !tags.includes(tag)) { setTags([...tags, tag]); setTagInput(''); }
+                  }
+                }}
+                placeholder='e.g. warranty, tax-deductible, reimbursable'
+                className='flex-1 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-foreground'
+              />
+              <button
+                type='button'
+                onClick={() => {
+                  const tag = tagInput.trim().toLowerCase();
+                  if (tag && !tags.includes(tag)) { setTags([...tags, tag]); setTagInput(''); }
+                }}
+                className='rounded-lg bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/20'
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
+          {/* Warranty */}
+          <div>
+            <label className='block text-sm font-medium text-foreground'>Warranty</label>
+            <div className='mt-1 grid gap-3 sm:grid-cols-2'>
+              <div>
+                <label className='block text-xs text-muted'>Expiry Date</label>
+                <input
+                  type='date'
+                  value={warrantyExpiry}
+                  onChange={(e) => setWarrantyExpiry(e.target.value)}
+                  className='mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground'
+                />
+              </div>
+              <div>
+                <label className='block text-xs text-muted'>Details</label>
+                <input
+                  type='text'
+                  value={warrantyDetails}
+                  onChange={(e) => setWarrantyDetails(e.target.value)}
+                  placeholder='e.g. 2 year manufacturer warranty'
+                  className='mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground'
+                />
+              </div>
             </div>
           </div>
 

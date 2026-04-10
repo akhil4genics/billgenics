@@ -8,6 +8,9 @@ import {
   getBill,
   updateBill,
   deleteBill,
+  getUploadUrl,
+  addAttachment,
+  removeAttachment,
   getUploadReceiptUrl,
   uploadReceiptComplete,
 } from '../controllers/bills.controller';
@@ -23,6 +26,9 @@ router.get('/stats', getBillStats);
 router.get('/:billId', validateObjectId('billId'), getBill);
 router.put('/:billId', validateObjectId('billId'), updateBill);
 router.delete('/:billId', validateObjectId('billId'), deleteBill);
+router.post('/:billId/upload-url', validateObjectId('billId'), getUploadUrl);
+router.post('/:billId/attachments', validateObjectId('billId'), addAttachment);
+router.delete('/:billId/attachments', validateObjectId('billId'), removeAttachment);
 router.post('/:billId/upload-receipt', validateObjectId('billId'), getUploadReceiptUrl);
 router.post('/:billId/upload-complete', validateObjectId('billId'), uploadReceiptComplete);
 

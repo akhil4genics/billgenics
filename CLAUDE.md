@@ -2,6 +2,65 @@
 
 Smart expense tracking, receipt scanning, and bill splitting web application.
 
+## Workflow Orchestration
+
+### 1. Plan Node Default
+
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- If something goes sideways, STOP and re-plan immediately — don't keep pushing
+- Use plan mode for verification steps, not just building
+- Write detailed specs upfront to reduce ambiguity
+
+### 2. Subagent Strategy
+
+- Use subagents liberally to keep main context window clean
+- Offload research, exploration, and parallel analysis to subagents
+- For complex problems, throw more compute at it via subagents
+- One task per subagent for focused execution
+
+### 3. Self-Improvement Loop
+
+- After ANY correction from the user: update `tasks/lessons.md` with the pattern
+- Write rules for yourself that prevent the same mistake
+- Ruthlessly iterate on these lessons until mistake rate drops
+- Review lessons at session start for relevant project
+
+### 4. Verification Before Done
+
+- Never mark a task complete without proving it works
+- Diff behavior between main and your changes when relevant
+- Ask yourself: "Would a staff engineer approve this?"
+- Run tests, check logs, demonstrate correctness
+
+### 5. Demand Elegance (Balanced)
+
+- For non-trivial changes: pause and ask "is there a more elegant way?"
+- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
+- Skip this for simple, obvious fixes — don't over-engineer
+- Challenge your own work before presenting it
+
+### 6. Autonomous Bug Fixing
+
+- When given a bug report: just fix it. Don't ask for hand-holding
+- Point at logs, errors, failing tests — then resolve them
+- Zero context switching required from the user
+- Go fix failing CI tests without being told how
+
+## Task Management
+
+1. **Plan First**: Write plan to `tasks/todo.md` with checkable items
+2. **Verify Plan**: Check in before starting implementation
+3. **Track Progress**: Mark items complete as you go
+4. **Explain Changes**: High-level summary at each step
+5. **Document Results**: Add review section to `tasks/todo.md`
+6. **Capture Lessons**: Update `tasks/lessons.md` after corrections
+
+## Core Principles
+
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
+- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+
 ## Architecture
 
 Split into two independently deployable parts:
@@ -92,7 +151,7 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 │   │   │   └── rateLimiter.ts  # Rate limiting for auth endpoints
 │   │   ├── models/
 │   │   │   ├── User.ts     # User model
-│   │   │   ├── Bill.ts     # Bill/receipt model (items, category, totals)
+│   │   │   ├── Bill.ts     # Bill/receipt model (items, category, totals, tags, warranty, attachments)
 │   │   │   ├── Event.ts    # Shared expense event model (members)
 │   │   │   ├── Expense.ts  # Expense within event (splits, settled status)
 │   │   │   └── Notification.ts  # In-app notification model
@@ -118,13 +177,16 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 - `POST /api/auth/reset-password` — Reset password with code
 
 ### Bills (protected — JWT required)
-- `GET /api/bills` — List user's bills (filter by month, year, category; paginated)
-- `POST /api/bills` — Create bill manually
-- `POST /api/bills/scan` — Scan receipt image via OpenAI, returns parsed data
+- `GET /api/bills` — List user's bills (filter by month, year, category; paginated; `?q=` for full-text search)
+- `POST /api/bills` — Create bill (supports tags, warranty, attachments)
+- `POST /api/bills/scan` — Scan receipt image via OpenAI, returns parsed data (only used from scan page)
 - `GET /api/bills/stats` — Monthly summary (total spent, bill count, category breakdown)
-- `GET /api/bills/:billId` — Get bill details
-- `PUT /api/bills/:billId` — Update bill
+- `GET /api/bills/:billId` — Get bill details (includes presigned URLs for receipt image + attachments)
+- `PUT /api/bills/:billId` — Update bill (tags, warranty, etc.)
 - `DELETE /api/bills/:billId` — Soft delete bill
+- `POST /api/bills/:billId/upload-url` — Get S3 presigned upload URL for any file attachment
+- `POST /api/bills/:billId/attachments` — Register attachment after S3 upload (key, filename, contentType, size)
+- `DELETE /api/bills/:billId/attachments` — Remove attachment by key
 - `POST /api/bills/:billId/upload-receipt` — Get S3 presigned upload URL for receipt image
 - `POST /api/bills/:billId/upload-complete` — Confirm receipt image upload
 
@@ -146,12 +208,22 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 
 ## Receipt Scanning Flow
 
-1. User uploads/captures receipt image on frontend
+1. User uploads/captures receipt image on `/bills/scan` page (scanning ONLY happens here)
 2. Frontend sends base64 image to `POST /api/bills/scan`
 3. Backend sends image to OpenAI GPT-4o Vision API
 4. OpenAI returns structured data: store name, ABN, items, totals, date, category
 5. Frontend displays parsed data for user to review/edit
-6. User confirms → `POST /api/bills` saves to database
+6. User confirms → `POST /api/bills` saves to database → receipt image uploaded to S3
+
+## Attachments Flow
+
+1. User views a bill on `/bills/[billId]` page
+2. Clicks "Attach File" → selects file (images, PDFs, docs, etc.)
+3. Frontend gets presigned upload URL via `POST /api/bills/:billId/upload-url`
+4. File uploaded directly to S3 via presigned URL
+5. Frontend registers attachment via `POST /api/bills/:billId/attachments`
+6. Attachments displayed inline (images shown as previews, other files as download links)
+7. No AI scanning triggered — attachments are stored as-is
 
 ## Expense Splitting Flow
 
@@ -206,9 +278,23 @@ npm run deploy              # deploys to dev stage
 npm run deploy:prod         # deploys to prod stage
 ```
 
+## Bill Search
+
+- Full-text search via MongoDB text index on `storeName`, `items.name`, `tags`, `notes`, `warranty.details`
+- Weighted: storeName (10), tags (8), items.name (5), notes (2), warranty.details (2)
+- Search via `?q=` param on `GET /api/bills` — when searching, date filters are skipped (searches all time)
+- Results sorted by text relevance score, then date
+- Frontend has debounced search bar (400ms); clicking a tag auto-searches for it
+
+## Bill Model Fields
+
+Core: storeName, storeABN, storeAddress, date, category, items[], subtotal, tax, total, paymentMethod, notes, entryMethod, status
+Search/Metadata: tags (string[]), warranty ({ expiryDate, details }), attachments ({ key, filename, contentType, size }[]), receiptImageKey
+DB Indexes: userId+date, userId+category, userId+tags, userId+warranty.expiryDate, text index (weighted)
+
 ## Key Design Decisions
 
-- **Presigned URLs for receipt images** — avoids Lambda's 6MB payload limit
+- **Presigned URLs for receipt images and attachments** — avoids Lambda's 6MB payload limit; getBill returns pre-signed download URLs
 - **Single Lambda function** — all routes handled by one function via `serverless-http` wrapping Express
 - **MongoDB connection caching** — `handler.ts` maintains a module-level `isConnected` flag
 - **ObjectId validation middleware** — all param IDs validated before hitting controllers
@@ -216,3 +302,6 @@ npm run deploy:prod         # deploys to prod stage
 - **Soft delete for bills** — status field (active/deleted)
 - **Greedy debt simplification** — balances calculated using greedy algorithm to minimize transactions
 - **`@backend/*` path alias** — frontend can import shared types from backend via `@backend/shared/types`
+- **Scan-only on scan page** — AI receipt parsing only triggers from `/bills/scan`; other pages allow manual entry and file attachment without scanning
+- **Tags stored lowercase** — normalized on create/update for consistent search
+- **Attachments stored as S3 keys** — presigned URLs generated on read (1hr expiry)

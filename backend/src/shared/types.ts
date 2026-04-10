@@ -53,6 +53,19 @@ export interface IBillItem {
   total: number;
 }
 
+export interface IBillAttachment {
+  key: string;
+  filename: string;
+  contentType: string;
+  size?: number;
+  url?: string;
+}
+
+export interface IBillWarranty {
+  expiryDate?: string;
+  details?: string;
+}
+
 export interface IBill {
   _id: string;
   userId: string;
@@ -68,6 +81,10 @@ export interface IBill {
   paymentMethod?: string;
   notes?: string;
   receiptImageKey?: string;
+  receiptImageUrl?: string;
+  tags: string[];
+  warranty?: IBillWarranty;
+  attachments: IBillAttachment[];
   entryMethod: EEntryMethod;
   status: EBillStatus;
   createdAt: string;
