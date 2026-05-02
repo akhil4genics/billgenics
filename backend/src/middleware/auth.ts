@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import User from '../models/User';
 
 if (!process.env.AUTH_SECRET) {
   throw new Error('AUTH_SECRET environment variable is not defined');
@@ -28,6 +29,24 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' });
     return;
+  }
+}
+
+export async function requireAdmin(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  if (!req.user?.id) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  try {
+    const user = await User.findById(req.user.id).select('adminUser').lean();
+    if (!user || user.adminUser !== true) {
+      res.status(403).json({ error: 'Admin access required' });
+      return;
+    }
+    next();
+  } catch (error) {
+    console.error('Admin check error:', error);
+    res.status(500).json({ error: 'Failed to verify admin access' });
   }
 }
 

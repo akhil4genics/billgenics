@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import { AuthRequest } from '../middleware/auth';
 import Bill, { EBillCategory, EBillStatus, EEntryMethod } from '../models/Bill';
 import { getPresignedUploadUrl, getPresignedUrl } from '../lib/s3';
-import { parseReceiptImage } from '../lib/openai';
+import { parseReceiptImage, NotAReceiptError } from '../lib/openai';
 
 const billItemSchema = z.object({
   name: z.string().min(1),
@@ -27,8 +27,8 @@ const billWarrantySchema = z.object({
 
 const createBillSchema = z.object({
   storeName: z.string().min(1).max(200),
-  storeABN: z.string().max(50).optional(),
-  storeAddress: z.string().max(500).optional(),
+  storeABN: z.string().max(50).nullish(),
+  storeAddress: z.string().max(500).nullish(),
   date: z.string().refine((d) => !isNaN(Date.parse(d)), 'Invalid date'),
   category: z.nativeEnum(EBillCategory).default(EBillCategory.OTHER),
   items: z.array(billItemSchema).default([]),
@@ -148,6 +148,10 @@ export async function scanReceipt(req: AuthRequest, res: Response): Promise<void
 
     res.json({ success: true, data: parsed });
   } catch (error) {
+    if (error instanceof NotAReceiptError) {
+      res.status(400).json({ error: error.message, code: 'NOT_A_RECEIPT' });
+      return;
+    }
     console.error('Error scanning receipt:', error);
     res.status(500).json({ error: 'Failed to scan receipt. Please try again or enter manually.' });
   }

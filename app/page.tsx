@@ -103,51 +103,123 @@ function BellIcon({ className }: { className?: string }) {
   );
 }
 
+function ArrowUpRightIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill='none' viewBox='0 0 24 24' strokeWidth={2} stroke='currentColor'>
+      <path strokeLinecap='round' strokeLinejoin='round' d='M7 17L17 7M17 7H9M17 7V15' />
+    </svg>
+  );
+}
+
+function DownloadIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill='none' viewBox='0 0 24 24' strokeWidth={1.7} stroke='currentColor'>
+      <path strokeLinecap='round' strokeLinejoin='round' d='M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3' />
+    </svg>
+  );
+}
+
+function SparkleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill='currentColor' viewBox='0 0 24 24'>
+      <path d='M12 2l1.9 5.7L20 9.5l-5.1 2.3L13 18l-1-5.9L6 10.5l5.1-1.4L12 2z' />
+    </svg>
+  );
+}
+
+// ─── Primary CTA button ─────────────────────────────────────────────────────
+
+function PrimaryButton({
+  href,
+  children,
+  className = '',
+}: {
+  href: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`group inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(5,85,241,0.6)] transition-all duration-300 hover:bg-primary-hover hover:shadow-[0_18px_40px_-10px_rgba(5,85,241,0.7)] ${className}`}
+    >
+      <span>{children}</span>
+      <span className='flex h-7 w-7 items-center justify-center rounded-full bg-white/15 transition-transform duration-300 group-hover:rotate-45'>
+        <ArrowUpRightIcon className='h-4 w-4' />
+      </span>
+    </Link>
+  );
+}
+
+function SecondaryButton({
+  href,
+  children,
+  className = '',
+}: {
+  href: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={`inline-flex items-center gap-2 rounded-full bg-secondary px-7 py-3.5 text-sm font-semibold text-foreground transition-all duration-300 hover:bg-secondary-hover ${className}`}
+    >
+      <span>{children}</span>
+      <DownloadIcon className='h-4 w-4' />
+    </Link>
+  );
+}
+
+// ─── Section top label ──────────────────────────────────────────────────────
+
+function SectionLabel({
+  icon: Icon,
+  children,
+  className = '',
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-4 py-1.5 ${className}`}>
+      <Icon className='h-4 w-4 text-primary' />
+      <span className='text-xs font-semibold uppercase tracking-[0.18em] text-muted'>{children}</span>
+    </div>
+  );
+}
+
 // ─── Hero ───────────────────────────────────────────────────────────────────
 
 function Hero() {
   return (
-    <section className='relative overflow-hidden pt-24 pb-20 sm:pt-32 sm:pb-32'>
+    <section className='relative overflow-hidden pt-32 pb-16 sm:pt-40 sm:pb-24'>
       <div className='absolute inset-0 -z-10 overflow-hidden'>
-        <div className='absolute -top-32 left-1/2 h-[600px] w-[600px] -translate-x-1/2 animate-pulse rounded-full bg-gradient-to-br from-primary/30 via-accent/20 to-transparent blur-3xl' />
-        <div className='absolute -bottom-32 -right-32 h-[500px] w-[500px] animate-pulse rounded-full bg-gradient-to-tl from-accent/25 via-primary/15 to-transparent blur-3xl [animation-delay:1s]' />
-        <div className='absolute top-1/2 -left-32 h-[400px] w-[400px] animate-pulse rounded-full bg-gradient-to-r from-primary/15 to-accent/10 blur-3xl [animation-delay:2s]' />
+        <div className='absolute -top-40 left-1/2 h-[700px] w-[700px] -translate-x-1/2 rounded-full bg-gradient-to-br from-primary/15 via-accent/10 to-transparent blur-3xl' />
+        <div className='absolute top-1/3 -right-40 h-[500px] w-[500px] rounded-full bg-gradient-to-tl from-primary/10 to-transparent blur-3xl' />
       </div>
 
       <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
-        <div className='grid items-center gap-12 lg:grid-cols-2'>
+        <div className='grid items-center gap-16 lg:grid-cols-[1.1fr_1fr]'>
           <Reveal>
             <div className='text-center lg:text-left'>
-              <div className='mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary backdrop-blur-sm'>
-                <span className='relative flex h-2 w-2'>
-                  <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75'></span>
-                  <span className='relative inline-flex h-2 w-2 rounded-full bg-primary'></span>
+              <div className='mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-4 py-1.5'>
+                <SparkleIcon className='h-4 w-4 text-primary' />
+                <span className='text-sm font-semibold text-foreground'>
+                  #1 <span className='text-muted'>EXPENSE PLATFORM</span>
                 </span>
-                AI-powered receipt scanning
               </div>
-              <h1 className='text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl'>
-                Track Your Expenses,{' '}
-                <span className='bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] bg-clip-text text-transparent animate-[gradient_3s_linear_infinite]'>
-                  Smartly
-                </span>
+              <h1 className='text-5xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl lg:text-7xl'>
+                Track bills <span className='design-text'>and</span> split
+                <br className='hidden sm:block' /> expenses <span className='design-text'>with</span> ease.
               </h1>
-              <p className='mx-auto mt-6 max-w-xl text-lg leading-relaxed text-muted lg:mx-0'>
-                Scan receipts, track spending by category, view monthly analytics, and split expenses with friends. All in one place.
+              <p className='mt-6 max-w-xl text-base leading-relaxed text-muted lg:text-lg'>
+                Scan receipts with AI, keep your spending organized by category, view monthly analytics, and split shared expenses with friends — all in one place.
               </p>
               <div className='mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row lg:justify-start'>
-                <Link
-                  href='/signin'
-                  className='group relative flex items-center gap-2 overflow-hidden rounded-full bg-gradient-to-r from-primary to-accent px-8 py-3.5 text-base font-medium text-white shadow-lg shadow-primary/25 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 hover:brightness-110'
-                >
-                  <ScanIcon className='h-5 w-5 transition-transform duration-300 group-hover:-translate-y-0.5' />
-                  Get Started
-                </Link>
-                <a
-                  href='#features'
-                  className='rounded-full border border-border px-8 py-3.5 text-base font-medium text-foreground backdrop-blur-sm transition-all duration-300 hover:border-primary/50 hover:bg-primary/5'
-                >
-                  Learn More
-                </a>
+                <PrimaryButton href='/signup'>Get Started</PrimaryButton>
+                <SecondaryButton href='/signin'>Sign In</SecondaryButton>
               </div>
             </div>
           </Reveal>
@@ -155,20 +227,43 @@ function Hero() {
           <Reveal delay={200}>
             <div className='relative'>
               <div className='relative mx-auto max-w-lg'>
-                <div className='absolute -inset-4 rounded-3xl bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 blur-2xl' />
-                <div className='relative overflow-hidden rounded-2xl shadow-2xl shadow-primary/10 ring-1 ring-white/10'>
+                <div className='absolute -inset-6 rounded-[2rem] bg-gradient-to-br from-primary/15 via-accent/10 to-primary/10 blur-2xl' />
+                <div className='relative overflow-hidden rounded-[2rem] bg-card shadow-[0_25px_60px_-15px_rgba(5,85,241,0.25)] ring-1 ring-border'>
                   <Image
                     src='/images/scan_bill.png'
-                    alt='Scan your bills'
+                    alt='Scan your bills with AI'
                     width={800}
-                    height={400}
-                    className='rounded-2xl'
+                    height={600}
+                    className='rounded-[2rem]'
                     priority
                   />
                 </div>
               </div>
             </div>
           </Reveal>
+        </div>
+
+        {/* Ticker / stats strip */}
+        <div className='mt-20 rounded-3xl border border-border bg-card/50 p-8 backdrop-blur-sm'>
+          <div className='flex flex-col items-center justify-between gap-6 md:flex-row'>
+            <h2 className='text-xl font-semibold text-foreground md:text-2xl'>
+              Over <span className='text-primary'>10K+</span> receipts scanned with us!
+            </h2>
+            <div className='grid w-full grid-cols-3 gap-6 md:w-auto md:gap-12'>
+              <div className='text-center md:text-left'>
+                <div className='text-2xl font-bold text-foreground md:text-3xl'>50K+</div>
+                <div className='mt-1 text-xs uppercase tracking-wider text-muted'>Bills tracked</div>
+              </div>
+              <div className='text-center md:text-left'>
+                <div className='text-2xl font-bold text-foreground md:text-3xl'>99%</div>
+                <div className='mt-1 text-xs uppercase tracking-wider text-muted'>AI accuracy</div>
+              </div>
+              <div className='text-center md:text-left'>
+                <div className='text-2xl font-bold text-foreground md:text-3xl'>4M+</div>
+                <div className='mt-1 text-xs uppercase tracking-wider text-muted'>Saved smartly</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -177,87 +272,104 @@ function Hero() {
 
 // ─── Features ───────────────────────────────────────────────────────────────
 
-const features = [
+type Feature = {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  image: string;
+  span?: 'wide' | 'normal';
+};
+
+const features: Feature[] = [
   {
     icon: ScanIcon,
-    title: 'Scan Receipts',
-    description: 'Snap a photo of your receipt and our AI automatically extracts store name, items, totals, and more.',
+    title: 'AI Receipt Scanning',
+    description: 'Snap a photo of any receipt. Our AI extracts store name, items, totals, and date automatically.',
     image: '/images/scan_bill.png',
-  },
-  {
-    icon: ReceiptIcon,
-    title: 'Track Expenses',
-    description: 'Keep all your bills organized in one place. Search, filter, and view your spending history effortlessly.',
-    image: '/images/expenses_tracker.png',
+    span: 'wide',
   },
   {
     icon: ChartIcon,
     title: 'Smart Analytics',
-    description: 'See where your money goes with monthly breakdowns, category insights, and spending trends.',
+    description: 'See monthly breakdowns, category insights, and spending trends at a glance.',
     image: '/images/invoice_analytics.png',
   },
   {
     icon: UsersIcon,
     title: 'Split with Friends',
-    description: 'Create events, add shared expenses, and automatically calculate who owes whom. Settle up easily.',
+    description: 'Create events, add shared expenses, and auto-calculate who owes whom.',
     image: '/images/calculations.png',
+  },
+  {
+    icon: ReceiptIcon,
+    title: 'Track Expenses',
+    description: 'Keep all your bills organized in one place. Search and filter effortlessly.',
+    image: '/images/expenses_tracker.png',
   },
   {
     icon: TagIcon,
     title: 'Auto Categories',
-    description: 'Bills are automatically categorized — grocery, dining, electronics, transport, and more.',
+    description: 'Bills are auto-categorized — grocery, dining, electronics, transport, and more.',
     image: '/images/invoice_search.png',
-  },
-  {
-    icon: BellIcon,
-    title: 'Notifications',
-    description: 'Get notified when expenses are added, settlements are made, or you\'re invited to a group.',
-    image: '/images/invoice_manage_transparent.png',
+    span: 'wide',
   },
 ];
 
+function FeatureCard({ feature, delay }: { feature: Feature; delay: number }) {
+  const { icon: Icon } = feature;
+  const wide = feature.span === 'wide';
+
+  return (
+    <Reveal
+      delay={delay}
+      className={wide ? 'md:col-span-2' : ''}
+    >
+      <div className='group relative flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-card transition-all duration-500 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_25px_50px_-20px_rgba(5,85,241,0.25)]'>
+        <div className='flex items-start gap-4 p-8'>
+          <div className='flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary'>
+            <Icon className='h-5 w-5' />
+          </div>
+          <div>
+            <h3 className='text-xl font-semibold text-foreground'>{feature.title}</h3>
+            <p className='mt-2 text-sm leading-relaxed text-muted'>{feature.description}</p>
+          </div>
+        </div>
+        <div className='relative mt-auto h-60 overflow-hidden bg-gradient-to-br from-secondary via-secondary/70 to-card'>
+          <Image
+            src={feature.image}
+            alt={feature.title}
+            fill
+            className='object-contain p-6 transition-transform duration-700 group-hover:scale-105'
+          />
+        </div>
+      </div>
+    </Reveal>
+  );
+}
+
 function Features() {
   return (
-    <section id='features' className='relative py-20 sm:py-32'>
-      <div className='absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent' />
-
+    <section id='features' className='relative py-20 sm:py-28'>
       <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
-        <Reveal>
-          <div className='text-center'>
-            <span className='inline-block rounded-full bg-gradient-to-r from-primary/10 to-accent/10 px-4 py-1.5 text-sm font-medium text-primary'>
-              Features
-            </span>
-            <h2 className='mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl'>
-              Everything you need to manage expenses
-            </h2>
-            <p className='mx-auto mt-4 max-w-2xl text-lg text-muted'>
-              Powerful tools to help you track, categorize, and share your expenses.
-            </p>
-          </div>
-        </Reveal>
-
-        <div className='mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3'>
-          {features.map((feature, i) => (
-            <Reveal key={feature.title} delay={i * 100}>
-              <div className='group h-full overflow-hidden rounded-2xl border border-border bg-card transition-all duration-500 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5'>
-                <div className='relative h-48 overflow-hidden bg-gradient-to-br from-primary/5 to-accent/5'>
-                  <Image
-                    src={feature.image}
-                    alt={feature.title}
-                    fill
-                    className='object-contain p-4 transition-transform duration-700 group-hover:scale-110'
-                  />
-                  <div className='absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 opacity-0 transition-opacity duration-500 group-hover:opacity-100' />
-                </div>
-                <div className='p-6'>
-                  <div className='mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/10 to-accent/10 transition-all duration-300 group-hover:from-primary/20 group-hover:to-accent/20'>
-                    <feature.icon className='h-6 w-6 text-primary' />
-                  </div>
-                  <h3 className='text-xl font-semibold text-foreground'>{feature.title}</h3>
-                  <p className='mt-2 leading-relaxed text-muted'>{feature.description}</p>
-                </div>
-              </div>
+        <div className='flex flex-col items-start justify-between gap-6 md:flex-row md:items-end'>
+          <div>
+            <Reveal>
+              <SectionLabel icon={SparkleIcon}>Features</SectionLabel>
+              <h2 className='mt-5 max-w-2xl text-4xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-5xl'>
+                Take <span className='design-text'>control</span> of your finances
+              </h2>
             </Reveal>
+          </div>
+          <Reveal delay={100}>
+            <p className='max-w-md text-base leading-relaxed text-muted'>
+              Powerful tools designed to help you track every expense, split bills fairly, and make smarter money decisions.
+            </p>
+          </Reveal>
+        </div>
+
+        <div className='mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-3'>
+          {features.map((feature, i) => (
+            <FeatureCard key={feature.title} feature={feature} delay={i * 100} />
           ))}
         </div>
       </div>
@@ -269,62 +381,70 @@ function Features() {
 
 function HowItWorks() {
   const steps = [
-    { step: '01', title: 'Create an Account', description: 'Sign up for free and verify your email. Get started in seconds.' },
-    { step: '02', title: 'Scan or Enter Bills', description: 'Take a photo of your receipt or enter details manually. AI does the rest.' },
-    { step: '03', title: 'View Your Analytics', description: 'See monthly spending summaries, category breakdowns, and trends.' },
-    { step: '04', title: 'Split Expenses', description: 'Create events, invite friends, add shared expenses, and settle up.' },
+    { title: 'Create an Account', description: 'Sign up for free and verify your email. Get started in seconds.' },
+    { title: 'Scan or Enter Bills', description: 'Take a photo of your receipt or enter details manually — AI does the rest.' },
+    { title: 'View Your Analytics', description: 'See monthly spending summaries, category breakdowns, and trends.' },
+    { title: 'Split Expenses', description: 'Create events, invite friends, add shared expenses, and settle up.' },
   ];
 
   return (
-    <section id='how-it-works' className='relative overflow-hidden py-20 sm:py-32'>
-      <div className='absolute inset-0 -z-10 bg-gradient-to-b from-background via-secondary/30 to-background' />
-      <div className='absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent' />
+    <section id='how-it-works' className='relative overflow-hidden py-20 sm:py-28'>
+      <div className='absolute inset-0 -z-10 bg-gradient-to-b from-background via-secondary/40 to-background' />
 
       <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
         <Reveal>
-          <div className='text-center'>
-            <span className='inline-block rounded-full bg-gradient-to-r from-primary/10 to-accent/10 px-4 py-1.5 text-sm font-medium text-primary'>
-              Simple Process
-            </span>
-            <h2 className='mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl'>
-              How It Works
+          <div className='flex flex-col items-center text-center'>
+            <SectionLabel icon={ChartIcon}>Process</SectionLabel>
+            <h2 className='mt-5 max-w-3xl text-4xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-5xl'>
+              From receipt <span className='design-text'>to</span> insight in seconds
             </h2>
-            <p className='mx-auto mt-4 max-w-2xl text-lg text-muted'>
-              Get started in just a few simple steps. Managing expenses has never been easier.
+            <p className='mt-5 max-w-xl text-base leading-relaxed text-muted'>
+              Managing expenses has never been easier. Get up and running in just a few simple steps.
             </p>
           </div>
         </Reveal>
 
-        <div className='relative mt-20'>
-          <div className='absolute left-0 right-0 top-12 hidden h-0.5 bg-gradient-to-r from-transparent via-primary/30 to-transparent lg:block' />
-
-          <div className='grid gap-8 sm:grid-cols-2 lg:grid-cols-4'>
-            {steps.map((item, index) => (
-              <Reveal key={item.step} delay={index * 150}>
-                <div className='group relative h-full'>
-                  <div className='relative h-full rounded-2xl border border-border bg-card p-6 transition-all duration-500 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5'>
-                    <div className='absolute -top-4 left-6 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-sm font-bold text-white shadow-lg shadow-primary/30'>
-                      {index + 1}
-                    </div>
-
-                    <div className='mt-4'>
-                      <h3 className='text-lg font-semibold text-foreground'>{item.title}</h3>
-                      <p className='mt-2 text-sm leading-relaxed text-muted'>{item.description}</p>
-                    </div>
-                  </div>
-
-                  {index < steps.length - 1 && (
-                    <div className='absolute -right-4 top-12 z-10 hidden h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary/10 to-accent/10 text-primary lg:flex'>
-                      <svg className='h-4 w-4' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
-                        <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M14 5l7 7m0 0l-7 7m7-7H3' />
-                      </svg>
-                    </div>
-                  )}
+        <div className='mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4'>
+          {steps.map((item, index) => (
+            <Reveal key={item.title} delay={index * 120}>
+              <div className='group relative h-full rounded-3xl border border-border bg-card p-8 transition-all duration-500 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_20px_40px_-20px_rgba(5,85,241,0.3)]'>
+                <div className='flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary'>
+                  <span className='text-lg font-bold'>0{index + 1}</span>
                 </div>
-              </Reveal>
-            ))}
-          </div>
+                <h3 className='mt-6 text-lg font-semibold text-foreground'>{item.title}</h3>
+                <p className='mt-2 text-sm leading-relaxed text-muted'>{item.description}</p>
+              </div>
+            </Reveal>
+          ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Testimonial strip ──────────────────────────────────────────────────────
+
+function TestimonialBand() {
+  return (
+    <section className='py-16'>
+      <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
+        <Reveal>
+          <div className='rounded-3xl border border-border bg-card p-10 text-center sm:p-16'>
+            <BellIcon className='mx-auto h-8 w-8 text-primary' />
+            <blockquote className='mt-6 text-2xl font-medium leading-relaxed tracking-tight text-foreground sm:text-3xl'>
+              &ldquo;BillGenics made splitting our trip expenses effortless. The AI receipt scanner saved us hours of manual entry.&rdquo;
+            </blockquote>
+            <div className='mt-8 flex items-center justify-center gap-3'>
+              <div className='flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary'>
+                SJ
+              </div>
+              <div className='text-left'>
+                <div className='text-sm font-semibold text-foreground'>Sarah Jones</div>
+                <div className='text-xs text-muted'>Weekend traveler</div>
+              </div>
+            </div>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -334,36 +454,39 @@ function HowItWorks() {
 
 function CTA() {
   return (
-    <section className='py-20 sm:py-32'>
+    <section className='py-20 sm:py-28'>
       <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
         <Reveal>
-          <div className='relative overflow-hidden rounded-3xl'>
-            <div className='absolute inset-0 bg-gradient-to-br from-primary via-accent to-primary' />
-            <div className='absolute -top-20 -right-20 h-60 w-60 animate-pulse rounded-full bg-white/10 blur-3xl' />
-            <div className='absolute -bottom-20 -left-20 h-60 w-60 animate-pulse rounded-full bg-white/10 blur-3xl [animation-delay:1.5s]' />
+          <div className='relative overflow-hidden rounded-[2.5rem] bg-primary px-8 py-16 sm:px-16 sm:py-20'>
+            <div className='absolute -top-24 -right-24 h-80 w-80 rounded-full bg-white/10 blur-3xl' />
+            <div className='absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-white/10 blur-3xl' />
 
-            <div className='relative p-8 sm:p-16'>
-              <div className='text-center'>
-                <h2 className='text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl'>
-                  Ready to take control of your expenses?
+            <div className='relative grid items-center gap-10 lg:grid-cols-[1.3fr_1fr]'>
+              <div>
+                <h2 className='text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl'>
+                  Ready to take <span className='italic text-white/80'>control</span> of your expenses?
                 </h2>
-                <p className='mx-auto mt-4 max-w-2xl text-lg text-white/80'>
-                  Join BillGenics and start tracking your spending, scanning receipts, and splitting bills with friends. Free to get started.
+                <p className='mt-5 max-w-xl text-base leading-relaxed text-white/80'>
+                  Join BillGenics and start tracking spending, scanning receipts, and splitting bills with friends. Free to get started.
                 </p>
-                <div className='mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row'>
-                  <Link
-                    href='/signup'
-                    className='rounded-full bg-white px-8 py-3.5 text-base font-medium text-primary shadow-lg transition-all duration-300 hover:bg-white/90 hover:shadow-xl'
-                  >
-                    Sign Up Free
-                  </Link>
-                  <Link
-                    href='/signin'
-                    className='rounded-full border border-white/30 px-8 py-3.5 text-base font-medium text-white backdrop-blur-sm transition-all duration-300 hover:border-white/50 hover:bg-white/10'
-                  >
-                    Sign In
-                  </Link>
-                </div>
+              </div>
+              <div className='flex flex-col items-start gap-4 sm:flex-row lg:flex-col lg:items-stretch'>
+                <Link
+                  href='/signup'
+                  className='group inline-flex items-center justify-between gap-3 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-primary shadow-lg transition-all duration-300 hover:bg-white/95'
+                >
+                  <span>Sign Up Free</span>
+                  <span className='flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 transition-transform duration-300 group-hover:rotate-45'>
+                    <ArrowUpRightIcon className='h-4 w-4' />
+                  </span>
+                </Link>
+                <Link
+                  href='/signin'
+                  className='inline-flex items-center justify-between gap-3 rounded-full border border-white/30 px-7 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:border-white/60 hover:bg-white/10'
+                >
+                  <span>Sign In</span>
+                  <ArrowUpRightIcon className='h-4 w-4' />
+                </Link>
               </div>
             </div>
           </div>
@@ -380,8 +503,8 @@ function Footer() {
 
   return (
     <footer className='border-t border-border bg-card'>
-      <div className='mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8'>
-        <div className='grid gap-8 md:grid-cols-4'>
+      <div className='mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8'>
+        <div className='grid gap-10 md:grid-cols-4'>
           <div className='md:col-span-1'>
             <Link href='/' className='inline-block'>
               <Image
@@ -389,26 +512,27 @@ function Footer() {
                 alt='BillGenics'
                 width={560}
                 height={160}
-                className='h-40 w-auto'
+                className='h-32 w-auto'
               />
             </Link>
-            <p className='mt-4 text-sm text-muted'>
+            <p className='mt-4 max-w-xs text-sm leading-relaxed text-muted'>
               Smart expense tracking, receipt scanning, and bill splitting — all in one app.
             </p>
           </div>
 
           <div>
             <h3 className='text-sm font-semibold text-foreground'>Product</h3>
-            <ul className='mt-4 space-y-2'>
+            <ul className='mt-4 space-y-3'>
               <li><a href='#features' className='text-sm text-muted transition-colors hover:text-foreground'>Features</a></li>
               <li><a href='#how-it-works' className='text-sm text-muted transition-colors hover:text-foreground'>How It Works</a></li>
+              <li><Link href='/blogs' className='text-sm text-muted transition-colors hover:text-foreground'>Blog</Link></li>
               <li><a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>Security</a></li>
             </ul>
           </div>
 
           <div>
             <h3 className='text-sm font-semibold text-foreground'>Company</h3>
-            <ul className='mt-4 space-y-2'>
+            <ul className='mt-4 space-y-3'>
               <li><a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>About</a></li>
               <li><a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>Contact</a></li>
             </ul>
@@ -416,17 +540,21 @@ function Footer() {
 
           <div>
             <h3 className='text-sm font-semibold text-foreground'>Legal</h3>
-            <ul className='mt-4 space-y-2'>
+            <ul className='mt-4 space-y-3'>
               <li><a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>Privacy Policy</a></li>
               <li><a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>Terms of Service</a></li>
             </ul>
           </div>
         </div>
 
-        <div className='mt-12 border-t border-border pt-8'>
-          <p className='text-center text-sm text-muted'>
+        <div className='mt-14 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row'>
+          <p className='text-sm text-muted'>
             &copy; {new Date().getFullYear()} BillGenics. All rights reserved.
           </p>
+          <div className='flex gap-6'>
+            <a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>Twitter</a>
+            <a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>LinkedIn</a>
+          </div>
         </div>
       </div>
     </footer>
@@ -460,6 +588,7 @@ export default function Home() {
         <Hero />
         <Features />
         <HowItWorks />
+        <TestimonialBand />
         <CTA />
       </main>
       <Footer />

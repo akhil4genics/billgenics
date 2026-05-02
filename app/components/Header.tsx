@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { useTheme } from './ThemeProvider';
 
 function SunIcon({ className }: { className?: string }) {
@@ -47,6 +48,8 @@ interface HeaderProps {
 
 export function Header({ showNav = true, showAuthButtons = true }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.adminUser === true;
 
   return (
     <header className='fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/80 backdrop-blur-md'>
@@ -66,24 +69,32 @@ export function Header({ showNav = true, showAuthButtons = true }: HeaderProps) 
 
         {showNav && (
           <nav className='hidden items-center gap-8 md:flex'>
-            <a
-              href='#features'
+            <Link
+              href='/#features'
               className='text-sm font-medium text-muted hover:text-foreground'
             >
               Features
-            </a>
-            <a
-              href='#how-it-works'
+            </Link>
+            <Link
+              href='/#how-it-works'
               className='text-sm font-medium text-muted hover:text-foreground'
             >
               How It Works
-            </a>
+            </Link>
             <Link
-              href='/signin'
+              href='/blogs'
               className='text-sm font-medium text-muted hover:text-foreground'
             >
-              Get Started
+              Blog
             </Link>
+            {isAdmin && (
+              <Link
+                href='/admin/blogs'
+                className='text-sm font-semibold text-primary hover:text-primary-hover'
+              >
+                Admin
+              </Link>
+            )}
           </nav>
         )}
 

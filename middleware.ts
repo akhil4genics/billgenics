@@ -3,10 +3,15 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check if the route is protected
-  const isProtectedRoute = ['/account', '/dashboard', '/bills', '/events'].some(
-    (path) => pathname.startsWith(path)
-  );
+  // Public exceptions inside otherwise-protected areas
+  const isPublicException =
+    pathname.startsWith('/events/join/');
+
+  const isProtectedRoute =
+    !isPublicException &&
+    ['/account', '/dashboard', '/bills', '/events', '/admin'].some((path) =>
+      pathname.startsWith(path)
+    );
 
   if (isProtectedRoute) {
     // Check for session token
@@ -24,5 +29,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/account/:path*', '/dashboard/:path*', '/bills/:path*', '/events/:path*'],
+  matcher: ['/account/:path*', '/dashboard/:path*', '/bills/:path*', '/events/:path*', '/admin/:path*'],
 };

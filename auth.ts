@@ -35,7 +35,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           if (!response.ok) return null;
 
           const user = await response.json();
-          return user; // { id, email, name, firstName, username }
+          return user; // { id, email, name, firstName, username, adminUser }
         } catch (error) {
           console.error('Auth error:', error);
           return null;
@@ -49,6 +49,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.firstName = user.firstName;
         token.username = user.username;
+        token.adminUser = (user as { adminUser?: boolean }).adminUser === true;
         // Create access token for Express API calls (verified by backend using AUTH_SECRET)
         token.accessToken = jwt.sign(
           { id: user.id, email: user.email },
@@ -63,6 +64,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.id = token.id as string;
         session.user.firstName = token.firstName as string;
         session.user.username = token.username as string;
+        session.user.adminUser = token.adminUser === true;
       }
       session.accessToken = token.accessToken as string;
       return session;

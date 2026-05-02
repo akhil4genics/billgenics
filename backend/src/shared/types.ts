@@ -36,6 +36,8 @@ export enum EMemberStatus {
 
 export enum ESplitType {
   EQUAL = 'equal',
+  PERCENTAGE = 'percentage',
+  SHARES = 'shares',
   CUSTOM = 'custom',
 }
 
@@ -147,6 +149,38 @@ export interface IUser {
   name: string;
   firstName: string;
   username: string;
+  adminUser?: boolean;
+}
+
+export enum EBlogStatus {
+  DRAFT = 'draft',
+  PUBLISHED = 'published',
+}
+
+export interface IBlogSection {
+  title: string;
+  description: string;
+  imageKey?: string;
+  imageUrl?: string;
+}
+
+export interface IBlog {
+  _id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  coverImageKey?: string;
+  coverImageUrl?: string;
+  sections: IBlogSection[];
+  tags: string[];
+  author: {
+    userId: string;
+    name: string;
+  };
+  status: EBlogStatus;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ApiResponse<T = unknown> {

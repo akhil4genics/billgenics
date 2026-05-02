@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { AppHeader } from '../../components/AppHeader';
 import { apiUrl, authHeaders } from '@/lib/api';
 
 export default function NewEventPage() {
@@ -49,7 +50,8 @@ export default function NewEventPage() {
 
   return (
     <div className='min-h-screen bg-background'>
-      <div className='mx-auto max-w-lg px-4 py-8'>
+      <AppHeader />
+      <div className='mx-auto max-w-lg px-4 py-8 pb-24 md:pb-8'>
         <Link href='/events' className='text-sm text-muted hover:text-foreground'>&larr; Events</Link>
         <h1 className='mt-2 text-2xl font-bold text-foreground'>Create Event</h1>
         <p className='mt-1 text-sm text-muted'>Create an event to track shared expenses with others</p>
@@ -79,7 +81,7 @@ export default function NewEventPage() {
           <button
             type='submit'
             disabled={saving}
-            className='w-full rounded-lg bg-gradient-to-r from-primary to-accent py-3 text-sm font-medium text-white hover:brightness-110 disabled:opacity-50'
+            className='btn-primary-block'
           >
             {saving ? 'Creating...' : 'Create Event'}
           </button>

@@ -3,10 +3,14 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const s3Client = new S3Client({
   region: process.env.REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.ACCESS_KEY_AWS || '',
-    secretAccessKey: process.env.SECRET_KEY_AWS || '',
-  },
+  ...(process.env.ACCESS_KEY_AWS && process.env.SECRET_KEY_AWS
+    ? {
+        credentials: {
+          accessKeyId: process.env.ACCESS_KEY_AWS,
+          secretAccessKey: process.env.SECRET_KEY_AWS,
+        },
+      }
+    : {}),
 });
 
 export async function getPresignedUrl(key: string): Promise<string> {

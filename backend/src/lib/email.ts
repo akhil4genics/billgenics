@@ -14,17 +14,23 @@ interface EmailOptions {
   html: string;
 }
 
+const BRAND_PRIMARY = '#0555f1';
+const BRAND_FOREGROUND = '#13274d';
+const BRAND_MUTED = '#5c6b87';
+const BRAND_SOFT_BG = '#f7f8fa';
+const BRAND_BORDER = '#e6e9f0';
+
 const getBaseUrl = () => process.env.FRONTEND_URL || 'https://billgenics.com';
 
 const getEmailHeader = () => `
   <tr>
-    <td style="padding: 0; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 16px 16px 0 0;">
+    <td style="padding: 0; background-color: ${BRAND_PRIMARY}; border-radius: 20px 20px 0 0;">
       <table role="presentation" style="width: 100%; border-collapse: collapse;">
         <tr>
           <td align="center" style="padding: 40px 20px;">
             <a href="${getBaseUrl()}" style="text-decoration: none;">
-              <h1 style="margin: 0; font-size: 32px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">
-                <span style="display: inline-block; width: 40px; height: 40px; background-color: rgba(255,255,255,0.2); border-radius: 10px; text-align: center; line-height: 40px; font-size: 22px; margin-right: 10px; vertical-align: middle;">B</span>
+              <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
+                <span style="display: inline-block; width: 38px; height: 38px; background-color: rgba(255,255,255,0.18); border-radius: 10px; text-align: center; line-height: 38px; font-size: 20px; margin-right: 10px; vertical-align: middle; font-weight: 700;">B</span>
                 BillGenics
               </h1>
             </a>
@@ -37,16 +43,69 @@ const getEmailHeader = () => `
 
 const getEmailFooter = () => `
   <tr>
-    <td style="padding: 32px 40px; background-color: #f8fafc; border-radius: 0 0 16px 16px; border-top: 1px solid #e2e8f0;">
-      <p style="margin: 0 0 8px 0; color: #64748b; font-size: 14px; line-height: 1.6;">
-        Need help? Contact us at <a href="mailto:support@billgenics.com" style="color: #6366f1; text-decoration: none;">support@billgenics.com</a>
+    <td style="padding: 28px 40px; background-color: ${BRAND_SOFT_BG}; border-radius: 0 0 20px 20px; border-top: 1px solid ${BRAND_BORDER};">
+      <p style="margin: 0 0 8px 0; color: ${BRAND_MUTED}; font-size: 13px; line-height: 1.6;">
+        Questions? Reach the BillGenics team at <a href="mailto:support@billgenics.com" style="color: ${BRAND_PRIMARY}; text-decoration: none;">support@billgenics.com</a>
       </p>
       <p style="margin: 0; color: #94a3b8; font-size: 12px;">
-        &copy; ${new Date().getFullYear()} BillGenics. All rights reserved.
+        &copy; ${new Date().getFullYear()} BillGenics — smart receipt scanning & bill splitting.
       </p>
     </td>
   </tr>
 `;
+
+function ctaButton(href: string, label: string): string {
+  return `
+    <table role="presentation" style="border-collapse: collapse;">
+      <tr>
+        <td style="border-radius: 9999px; background-color: ${BRAND_PRIMARY};">
+          <a href="${href}" style="display: inline-block; padding: 14px 44px; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; border-radius: 9999px;">
+            ${label}
+          </a>
+        </td>
+      </tr>
+    </table>
+  `;
+}
+
+function linkFallback(href: string): string {
+  return `
+    <p style="margin: 0 0 12px 0; color: ${BRAND_MUTED}; font-size: 13px; line-height: 1.6;">
+      Or copy and paste this link into your browser:
+    </p>
+    <p style="margin: 0; padding: 12px; background-color: ${BRAND_SOFT_BG}; border-radius: 8px; word-break: break-all; border: 1px solid ${BRAND_BORDER};">
+      <a href="${href}" style="color: ${BRAND_PRIMARY}; text-decoration: none; font-size: 13px;">
+        ${href}
+      </a>
+    </p>
+  `;
+}
+
+function wrap(title: string, bodyRows: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: ${BRAND_SOFT_BG};">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 0;">
+        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(5, 85, 241, 0.08);">
+          ${getEmailHeader()}
+          ${bodyRows}
+          ${getEmailFooter()}
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+}
 
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   try {
@@ -70,141 +129,73 @@ export function generateVerificationEmail(
   verificationLink: string,
   expiresInHours: number = 24
 ): string {
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Verify Your Email</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+  const body = `
     <tr>
-      <td align="center" style="padding: 40px 0;">
-        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          ${getEmailHeader()}
-          <tr>
-            <td style="padding: 40px 40px 20px 40px;">
-              <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 24px; font-weight: bold;">
-                Welcome to BillGenics, ${name}!
-              </h2>
-              <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px; line-height: 1.6;">
-                Thank you for signing up! To get started, please verify your email address by clicking the button below.
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding: 0 40px 40px 40px;">
-              <table role="presentation" style="border-collapse: collapse;">
-                <tr>
-                  <td style="border-radius: 9999px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);">
-                    <a href="${verificationLink}" style="display: inline-block; padding: 16px 48px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 9999px;">
-                      Verify Email Address
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 0 40px 40px 40px;">
-              <p style="margin: 0 0 16px 0; color: #64748b; font-size: 14px; line-height: 1.6;">
-                Or copy and paste this link into your browser:
-              </p>
-              <p style="margin: 0; padding: 12px; background-color: #f1f5f9; border-radius: 8px; word-break: break-all;">
-                <a href="${verificationLink}" style="color: #6366f1; text-decoration: none; font-size: 14px;">
-                  ${verificationLink}
-                </a>
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 0 40px 40px 40px;">
-              <div style="padding: 16px; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px;">
-                <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
-                  This verification link will expire in ${expiresInHours} hours. If you didn't create an account, you can safely ignore this email.
-                </p>
-              </div>
-            </td>
-          </tr>
-          ${getEmailFooter()}
-        </table>
+      <td style="padding: 40px 40px 20px 40px;">
+        <h2 style="margin: 0 0 16px 0; color: ${BRAND_FOREGROUND}; font-size: 24px; font-weight: 700;">
+          Welcome to BillGenics, ${name}!
+        </h2>
+        <p style="margin: 0 0 24px 0; color: ${BRAND_MUTED}; font-size: 15px; line-height: 1.6;">
+          You're one click away from scanning receipts, tracking bills, and splitting expenses with friends. Verify your email to activate your account.
+        </p>
       </td>
     </tr>
-  </table>
-</body>
-</html>
-  `.trim();
+    <tr>
+      <td align="center" style="padding: 0 40px 40px 40px;">
+        ${ctaButton(verificationLink, 'Verify Email Address')}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 40px 24px 40px;">
+        ${linkFallback(verificationLink)}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 40px 40px 40px;">
+        <div style="padding: 14px 16px; background-color: ${BRAND_SOFT_BG}; border-left: 3px solid ${BRAND_PRIMARY}; border-radius: 8px;">
+          <p style="margin: 0; color: ${BRAND_FOREGROUND}; font-size: 13px; line-height: 1.6;">
+            This verification link expires in ${expiresInHours} hours. If you didn't create a BillGenics account, you can safely ignore this email.
+          </p>
+        </div>
+      </td>
+    </tr>
+  `;
+  return wrap('Verify Your BillGenics Email', body);
 }
 
 export function generatePasswordResetEmail(name: string, resetLink: string, expiresInMinutes: number = 60): string {
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reset Your Password</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+  const body = `
     <tr>
-      <td align="center" style="padding: 40px 0;">
-        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          ${getEmailHeader()}
-          <tr>
-            <td style="padding: 40px 40px 20px 40px;">
-              <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 24px; font-weight: bold;">
-                Password Reset Request
-              </h2>
-              <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px; line-height: 1.6;">
-                Hi ${name}, we received a request to reset your password. Click the button below to create a new password.
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding: 0 40px 40px 40px;">
-              <table role="presentation" style="border-collapse: collapse;">
-                <tr>
-                  <td style="border-radius: 9999px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);">
-                    <a href="${resetLink}" style="display: inline-block; padding: 16px 48px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 9999px;">
-                      Reset Password
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 0 40px 40px 40px;">
-              <p style="margin: 0 0 16px 0; color: #64748b; font-size: 14px; line-height: 1.6;">
-                Or copy and paste this link into your browser:
-              </p>
-              <p style="margin: 0; padding: 12px; background-color: #f1f5f9; border-radius: 8px; word-break: break-all;">
-                <a href="${resetLink}" style="color: #6366f1; text-decoration: none; font-size: 14px;">
-                  ${resetLink}
-                </a>
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 0 40px 40px 40px;">
-              <div style="padding: 16px; background-color: #fef2f2; border-left: 4px solid #ef4444; border-radius: 8px;">
-                <p style="margin: 0; color: #991b1b; font-size: 14px; line-height: 1.6;">
-                  This link will expire in ${expiresInMinutes} minutes. If you didn't request a password reset, please ignore this email or contact support if you have concerns.
-                </p>
-              </div>
-            </td>
-          </tr>
-          ${getEmailFooter()}
-        </table>
+      <td style="padding: 40px 40px 20px 40px;">
+        <h2 style="margin: 0 0 16px 0; color: ${BRAND_FOREGROUND}; font-size: 24px; font-weight: 700;">
+          Reset your BillGenics password
+        </h2>
+        <p style="margin: 0 0 24px 0; color: ${BRAND_MUTED}; font-size: 15px; line-height: 1.6;">
+          Hi ${name}, we received a request to reset your BillGenics password. Click below to pick a new one.
+        </p>
       </td>
     </tr>
-  </table>
-</body>
-</html>
-  `.trim();
+    <tr>
+      <td align="center" style="padding: 0 40px 40px 40px;">
+        ${ctaButton(resetLink, 'Reset Password')}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 40px 24px 40px;">
+        ${linkFallback(resetLink)}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 40px 40px 40px;">
+        <div style="padding: 14px 16px; background-color: #fff5f5; border-left: 3px solid #dc2626; border-radius: 8px;">
+          <p style="margin: 0; color: #7f1d1d; font-size: 13px; line-height: 1.6;">
+            This link expires in ${expiresInMinutes} minutes. If you didn't request a password reset, ignore this email — your account stays secure.
+          </p>
+        </div>
+      </td>
+    </tr>
+  `;
+  return wrap('Reset Your BillGenics Password', body);
 }
 
 export function generateEventInviteEmail(
@@ -213,66 +204,32 @@ export function generateEventInviteEmail(
   eventName: string,
   acceptLink: string
 ): string {
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>You've Been Invited to an Event</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+  const body = `
     <tr>
-      <td align="center" style="padding: 40px 0;">
-        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          ${getEmailHeader()}
-          <tr>
-            <td style="padding: 40px 40px 20px 40px;">
-              <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 24px; font-weight: bold;">
-                You've Been Invited!
-              </h2>
-              <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px; line-height: 1.6;">
-                Hi ${recipientName}, <strong>${invitedByName}</strong> has invited you to join the expense group "<strong>${eventName}</strong>" on BillGenics.
-              </p>
-              <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px; line-height: 1.6;">
-                Join the group to track shared expenses and split bills easily.
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding: 0 40px 40px 40px;">
-              <table role="presentation" style="border-collapse: collapse;">
-                <tr>
-                  <td style="border-radius: 9999px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);">
-                    <a href="${acceptLink}" style="display: inline-block; padding: 16px 48px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 9999px;">
-                      View Event
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 0 40px 40px 40px;">
-              <p style="margin: 0 0 16px 0; color: #64748b; font-size: 14px; line-height: 1.6;">
-                Or copy and paste this link into your browser:
-              </p>
-              <p style="margin: 0; padding: 12px; background-color: #f1f5f9; border-radius: 8px; word-break: break-all;">
-                <a href="${acceptLink}" style="color: #6366f1; text-decoration: none; font-size: 14px;">
-                  ${acceptLink}
-                </a>
-              </p>
-            </td>
-          </tr>
-          ${getEmailFooter()}
-        </table>
+      <td style="padding: 40px 40px 20px 40px;">
+        <h2 style="margin: 0 0 16px 0; color: ${BRAND_FOREGROUND}; font-size: 24px; font-weight: 700;">
+          You're invited to split bills with friends
+        </h2>
+        <p style="margin: 0 0 20px 0; color: ${BRAND_MUTED}; font-size: 15px; line-height: 1.6;">
+          Hi ${recipientName}, <strong style="color: ${BRAND_FOREGROUND};">${invitedByName}</strong> added you to the BillGenics group "<strong style="color: ${BRAND_FOREGROUND};">${eventName}</strong>".
+        </p>
+        <p style="margin: 0 0 24px 0; color: ${BRAND_MUTED}; font-size: 15px; line-height: 1.6;">
+          Jump in to add shared expenses, track who paid what, and settle up in a tap.
+        </p>
       </td>
     </tr>
-  </table>
-</body>
-</html>
-  `.trim();
+    <tr>
+      <td align="center" style="padding: 0 40px 40px 40px;">
+        ${ctaButton(acceptLink, 'Open Group')}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 40px 40px 40px;">
+        ${linkFallback(acceptLink)}
+      </td>
+    </tr>
+  `;
+  return wrap(`Invitation to "${eventName}" on BillGenics`, body);
 }
 
 export function generateEventInviteNewUserEmail(
@@ -281,75 +238,41 @@ export function generateEventInviteNewUserEmail(
   eventName: string,
   completeAccountLink: string
 ): string {
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>You've Been Invited to BillGenics</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+  const body = `
     <tr>
-      <td align="center" style="padding: 40px 0;">
-        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          ${getEmailHeader()}
-          <tr>
-            <td style="padding: 40px 40px 20px 40px;">
-              <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 24px; font-weight: bold;">
-                You've Been Invited!
-              </h2>
-              <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px; line-height: 1.6;">
-                <strong>${invitedByName}</strong> has invited you to join the expense group "<strong>${eventName}</strong>" on BillGenics.
-              </p>
-              <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px; line-height: 1.6;">
-                Complete your account setup to start tracking and splitting expenses with your group.
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding: 0 40px 40px 40px;">
-              <table role="presentation" style="border-collapse: collapse;">
-                <tr>
-                  <td style="border-radius: 9999px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);">
-                    <a href="${completeAccountLink}" style="display: inline-block; padding: 16px 48px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 9999px;">
-                      Complete Account Setup
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 0 40px 40px 40px;">
-              <p style="margin: 0 0 16px 0; color: #64748b; font-size: 14px; line-height: 1.6;">
-                Or copy and paste this link into your browser:
-              </p>
-              <p style="margin: 0; padding: 12px; background-color: #f1f5f9; border-radius: 8px; word-break: break-all;">
-                <a href="${completeAccountLink}" style="color: #6366f1; text-decoration: none; font-size: 14px;">
-                  ${completeAccountLink}
-                </a>
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 0 40px 40px 40px;">
-              <div style="padding: 16px; background-color: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px;">
-                <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.6;">
-                  This invitation link will expire in 7 days. Your account will be linked to ${email}.
-                </p>
-              </div>
-            </td>
-          </tr>
-          ${getEmailFooter()}
-        </table>
+      <td style="padding: 40px 40px 20px 40px;">
+        <h2 style="margin: 0 0 16px 0; color: ${BRAND_FOREGROUND}; font-size: 24px; font-weight: 700;">
+          Welcome to BillGenics
+        </h2>
+        <p style="margin: 0 0 20px 0; color: ${BRAND_MUTED}; font-size: 15px; line-height: 1.6;">
+          <strong style="color: ${BRAND_FOREGROUND};">${invitedByName}</strong> invited you to the BillGenics group "<strong style="color: ${BRAND_FOREGROUND};">${eventName}</strong>" — a shared space to track and split bills with the people you spend with.
+        </p>
+        <p style="margin: 0 0 24px 0; color: ${BRAND_MUTED}; font-size: 15px; line-height: 1.6;">
+          Finish setting up your free BillGenics account to view the group, scan receipts, and settle up easily.
+        </p>
       </td>
     </tr>
-  </table>
-</body>
-</html>
-  `.trim();
+    <tr>
+      <td align="center" style="padding: 0 40px 40px 40px;">
+        ${ctaButton(completeAccountLink, 'Finish Account Setup')}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 40px 24px 40px;">
+        ${linkFallback(completeAccountLink)}
+      </td>
+    </tr>
+    <tr>
+      <td style="padding: 0 40px 40px 40px;">
+        <div style="padding: 14px 16px; background-color: ${BRAND_SOFT_BG}; border-left: 3px solid ${BRAND_PRIMARY}; border-radius: 8px;">
+          <p style="margin: 0; color: ${BRAND_FOREGROUND}; font-size: 13px; line-height: 1.6;">
+            This invitation expires in 7 days. Your BillGenics account will be linked to <strong>${email}</strong>.
+          </p>
+        </div>
+      </td>
+    </tr>
+  `;
+  return wrap(`Join "${eventName}" on BillGenics`, body);
 }
 
 export function generateSettlementNotificationEmail(
@@ -359,49 +282,26 @@ export function generateSettlementNotificationEmail(
   eventName: string,
   eventLink: string
 ): string {
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Settlement Notification</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f1f5f9;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+  const body = `
     <tr>
-      <td align="center" style="padding: 40px 0;">
-        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          ${getEmailHeader()}
-          <tr>
-            <td style="padding: 40px 40px 20px 40px;">
-              <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 24px; font-weight: bold;">
-                Settlement Recorded
-              </h2>
-              <p style="margin: 0 0 24px 0; color: #64748b; font-size: 16px; line-height: 1.6;">
-                Hi ${recipientName}, <strong>${settledByName}</strong> has marked a settlement of <strong>$${amount.toFixed(2)}</strong> in the event "<strong>${eventName}</strong>".
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding: 0 40px 40px 40px;">
-              <table role="presentation" style="border-collapse: collapse;">
-                <tr>
-                  <td style="border-radius: 9999px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);">
-                    <a href="${eventLink}" style="display: inline-block; padding: 16px 48px; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 9999px;">
-                      View Event
-                    </a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          ${getEmailFooter()}
-        </table>
+      <td style="padding: 40px 40px 20px 40px;">
+        <h2 style="margin: 0 0 16px 0; color: ${BRAND_FOREGROUND}; font-size: 24px; font-weight: 700;">
+          You've been paid back on BillGenics
+        </h2>
+        <p style="margin: 0 0 24px 0; color: ${BRAND_MUTED}; font-size: 15px; line-height: 1.6;">
+          Hi ${recipientName}, <strong style="color: ${BRAND_FOREGROUND};">${settledByName}</strong> marked a settlement of <strong style="color: ${BRAND_PRIMARY};">$${amount.toFixed(2)}</strong> in the group "<strong style="color: ${BRAND_FOREGROUND};">${eventName}</strong>".
+        </p>
+        <p style="margin: 0 0 24px 0; color: ${BRAND_MUTED}; font-size: 15px; line-height: 1.6;">
+          Open the group to review the updated balances.
+        </p>
       </td>
     </tr>
-  </table>
-</body>
-</html>
-  `.trim();
+    <tr>
+      <td align="center" style="padding: 0 40px 40px 40px;">
+        ${ctaButton(eventLink, 'View Group')}
+      </td>
+    </tr>
+  `;
+  return wrap(`Settlement recorded in "${eventName}"`, body);
 }
+

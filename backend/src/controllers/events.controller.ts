@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { z } from 'zod';
 import crypto from 'crypto';
 import mongoose from 'mongoose';
@@ -43,6 +43,10 @@ const settleSchema = z.object({
 export async function listEvents(req: AuthRequest, res: Response): Promise<void> {
   try {
     const userId = req.user!.id;
+    const filter = req.query.status === 'closed' ? 'closed' : 'active';
+    const statusFilter = filter === 'active'
+      ? { status: EEventStatus.ACTIVE }
+      : { status: { $in: [EEventStatus.SETTLED, EEventStatus.ARCHIVED] } };
 
     const events = await Event.find({
       $or: [
@@ -50,7 +54,7 @@ export async function listEvents(req: AuthRequest, res: Response): Promise<void>
         { 'members.userId': userId },
         { 'members.email': req.user!.email },
       ],
-      status: { $ne: EEventStatus.ARCHIVED },
+      ...statusFilter,
     })
       .sort({ updatedAt: -1 })
       .lean();
@@ -59,6 +63,32 @@ export async function listEvents(req: AuthRequest, res: Response): Promise<void>
   } catch (error) {
     console.error('Error listing events:', error);
     res.status(500).json({ error: 'Failed to list events' });
+  }
+}
+
+export async function updateEventStatus(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.id;
+    const { eventId } = req.params;
+    const parsed = z.object({ status: z.enum(['active', 'closed']) }).parse(req.body);
+
+    const event = await Event.findOne({ _id: eventId, createdBy: userId });
+    if (!event) {
+      res.status(404).json({ error: 'Event not found or you are not the creator' });
+      return;
+    }
+
+    event.status = parsed.status === 'active' ? EEventStatus.ACTIVE : EEventStatus.SETTLED;
+    await event.save();
+
+    res.json({ success: true, data: event });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({ error: 'Validation failed', details: error.issues });
+      return;
+    }
+    console.error('Error updating event status:', error);
+    res.status(500).json({ error: 'Failed to update event status' });
   }
 }
 
@@ -498,5 +528,136 @@ export async function settleBalance(req: AuthRequest, res: Response): Promise<vo
     }
     console.error('Error settling balance:', error);
     res.status(500).json({ error: 'Failed to settle balance' });
+  }
+}
+
+// POST /api/events/:eventId/invite-link — generate (or return existing) shareable invite URL
+export async function generateInviteLink(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.id;
+    const { eventId } = req.params;
+
+    const event = await Event.findOne({
+      _id: eventId,
+      $or: [{ createdBy: userId }, { 'members.userId': userId }, { 'members.email': req.user!.email }],
+    });
+    if (!event) {
+      res.status(404).json({ error: 'Event not found' });
+      return;
+    }
+
+    if (!event.inviteCode) {
+      event.inviteCode = crypto.randomBytes(16).toString('hex');
+      await event.save();
+    }
+
+    const frontendUrl = process.env.FRONTEND_URL || 'https://billgenics.com';
+    const inviteUrl = `${frontendUrl}/events/join/${event.inviteCode}`;
+    res.json({
+      success: true,
+      data: {
+        inviteCode: event.inviteCode,
+        inviteUrl,
+        eventName: event.name,
+      },
+    });
+  } catch (error) {
+    console.error('Error generating invite link:', error);
+    res.status(500).json({ error: 'Failed to generate invite link' });
+  }
+}
+
+// GET /api/events/join/:code — public preview of invite (no auth)
+export async function getEventByInviteCode(req: Request, res: Response): Promise<void> {
+  try {
+    const { code } = req.params;
+    const event = await Event.findOne({ inviteCode: code }).select('name description createdBy members status').lean();
+    if (!event) {
+      res.status(404).json({ error: 'Invitation not found or has expired' });
+      return;
+    }
+    if (event.status === EEventStatus.ARCHIVED) {
+      res.status(410).json({ error: 'This event is no longer active' });
+      return;
+    }
+    const inviter = await User.findById(event.createdBy).select('name').lean();
+    res.json({
+      success: true,
+      data: {
+        name: event.name,
+        description: event.description,
+        memberCount: event.members.length,
+        invitedBy: inviter?.name || null,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching invite:', error);
+    res.status(500).json({ error: 'Failed to fetch invitation' });
+  }
+}
+
+// POST /api/events/join/:code — authenticated user joins event via invite code
+export async function joinEventByInviteCode(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.id;
+    const email = req.user!.email;
+    const { code } = req.params;
+
+    const event = await Event.findOne({ inviteCode: code });
+    if (!event) {
+      res.status(404).json({ error: 'Invitation not found or has expired' });
+      return;
+    }
+    if (event.status === EEventStatus.ARCHIVED) {
+      res.status(410).json({ error: 'This event is no longer active' });
+      return;
+    }
+
+    // Already a member?
+    const alreadyMember = event.members.some(
+      (m) => m.userId?.toString() === userId || m.email.toLowerCase() === email.toLowerCase()
+    );
+    if (alreadyMember) {
+      // Upgrade invited → active if needed
+      let modified = false;
+      for (const m of event.members) {
+        if (m.email.toLowerCase() === email.toLowerCase() && m.status !== EMemberStatus.ACTIVE) {
+          m.userId = new mongoose.Types.ObjectId(userId) as unknown as mongoose.Schema.Types.ObjectId;
+          m.status = EMemberStatus.ACTIVE;
+          modified = true;
+        }
+      }
+      if (modified) await event.save();
+      res.json({ success: true, data: { eventId: event._id, alreadyMember: true } });
+      return;
+    }
+
+    const user = await User.findById(userId).select('name email').lean();
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    event.members.push({
+      userId: new mongoose.Types.ObjectId(userId) as unknown as mongoose.Schema.Types.ObjectId,
+      email: user.email,
+      name: user.name,
+      status: EMemberStatus.ACTIVE,
+    });
+    await event.save();
+
+    // Notify the event creator
+    await Notification.create({
+      userId: event.createdBy,
+      type: ENotificationType.EVENT_INVITE,
+      message: `${user.name} joined "${event.name}" via invite link`,
+      relatedEventId: event._id,
+      relatedUserId: new mongoose.Types.ObjectId(userId),
+    });
+
+    res.json({ success: true, data: { eventId: event._id, alreadyMember: false } });
+  } catch (error) {
+    console.error('Error joining event:', error);
+    res.status(500).json({ error: 'Failed to join event' });
   }
 }

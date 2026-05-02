@@ -124,7 +124,7 @@ function SignInForm() {
 
       <main className='flex flex-1 items-center justify-center px-4 py-12 pt-32'>
         <div className='w-full max-w-md'>
-          <div className='rounded-2xl border border-border bg-card p-8 shadow-lg'>
+          <div className='card-elevated p-8'>
             <div className='mb-8 text-center'>
               <h1 className='text-2xl font-bold text-foreground'>Welcome back</h1>
               <p className='mt-2 text-muted'>Sign in to your account to continue</p>
@@ -193,7 +193,7 @@ function SignInForm() {
               <button
                 type='submit'
                 disabled={isLoading}
-                className='w-full rounded-lg bg-primary px-4 py-3 font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50'
+                className='btn-primary-block'
               >
                 {isLoading ? 'Signing in...' : 'Sign in'}
               </button>

@@ -3,6 +3,8 @@ import { EBillCategory } from './Bill';
 
 export enum ESplitType {
   EQUAL = 'equal',
+  PERCENTAGE = 'percentage',
+  SHARES = 'shares',
   CUSTOM = 'custom',
 }
 

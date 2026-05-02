@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { AppHeader } from '../components/AppHeader';
 import { apiUrl, authHeaders } from '@/lib/api';
 import { EBillCategory } from '@backend/shared/types';
 
@@ -101,18 +102,18 @@ export default function BillsPage() {
 
   return (
     <div className='min-h-screen bg-background'>
-      <div className='mx-auto max-w-4xl px-4 py-8'>
+      <AppHeader />
+      <div className='mx-auto max-w-4xl px-4 py-8 pb-24 md:pb-8'>
         {/* Header */}
         <div className='mb-6 flex items-center justify-between'>
           <div>
-            <Link href='/account' className='text-sm text-muted hover:text-foreground'>&larr; Dashboard</Link>
-            <h1 className='mt-1 text-2xl font-bold text-foreground'>My Bills</h1>
+            <h1 className='text-2xl font-bold text-foreground'>My Bills</h1>
           </div>
           <div className='flex gap-2'>
-            <Link href='/bills/scan' className='rounded-lg bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-medium text-white hover:brightness-110'>
+            <Link href='/bills/scan' className='btn-primary'>
               Scan
             </Link>
-            <Link href='/bills/new' className='rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary'>
+            <Link href='/bills/new' className='btn-ghost'>
               Add Manually
             </Link>
           </div>

@@ -66,6 +66,8 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
+  // Acknowledge Next 16 default Turbopack (next-pwa's webpack config only runs in prod)
+  turbopack: {},
   images: {
     remotePatterns: [
       {

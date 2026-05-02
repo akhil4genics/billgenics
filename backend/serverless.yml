@@ -11,11 +11,18 @@ provider:
   stage: ${opt:stage, 'dev'}
   timeout: 30
   memorySize: 512
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:DeleteObject
+          Resource: arn:aws:s3:::${env:S3_BUCKET_NAME}/*
   environment:
     MONGODB_URI: ${env:MONGODB_URI}
     S3_BUCKET_NAME: ${env:S3_BUCKET_NAME}
-    ACCESS_KEY_AWS: ${env:ACCESS_KEY_AWS}
-    SECRET_KEY_AWS: ${env:SECRET_KEY_AWS}
     REGION: ${env:REGION}
     SMTP_USER: ${env:SMTP_USER}
     SMTP_PASSWORD: ${env:SMTP_PASSWORD}

@@ -96,7 +96,7 @@ function CompleteAccountForm() {
         <Header showNav={false} showAuthButtons={false} />
         <main className='flex flex-1 items-center justify-center px-4 py-12 pt-32'>
           <div className='w-full max-w-md'>
-            <div className='rounded-2xl border border-border bg-card p-8 shadow-lg'>
+            <div className='card-elevated p-8'>
               <div className='mb-6 text-center'>
                 <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20'>
                   <svg
@@ -121,7 +121,7 @@ function CompleteAccountForm() {
 
               <Link
                 href='/signin'
-                className='block w-full rounded-lg bg-primary px-4 py-3 text-center font-medium text-white transition-colors hover:bg-primary-hover'
+                className='btn-primary-block block text-center'
               >
                 Sign in now
               </Link>
@@ -226,7 +226,7 @@ function CompleteAccountForm() {
               <button
                 type='submit'
                 disabled={isLoading || !code || !email}
-                className='w-full rounded-lg bg-primary px-4 py-3 font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50'
+                className='btn-primary-block'
               >
                 {isLoading ? 'Creating account...' : 'Complete Setup'}
               </button>

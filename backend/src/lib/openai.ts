@@ -13,6 +13,13 @@ interface ParsedReceipt {
   paymentMethod?: string;
 }
 
+export class NotAReceiptError extends Error {
+  constructor(reason?: string) {
+    super(reason || 'The uploaded image does not appear to be a receipt.');
+    this.name = 'NotAReceiptError';
+  }
+}
+
 export async function parseReceiptImage(base64Image: string): Promise<ParsedReceipt> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -30,8 +37,14 @@ export async function parseReceiptImage(base64Image: string): Promise<ParsedRece
       messages: [
         {
           role: 'system',
-          content: `You are a receipt parser. Extract structured data from receipt images. Return ONLY valid JSON with this exact structure:
+          content: `You are a receipt parser. Your first job is to determine whether the image is a purchase receipt or invoice (a printed/photographed proof of purchase from a store, restaurant, utility, transport provider, etc., showing line items and/or a total). Selfies, screenshots of unrelated UI, photos of people, landscapes, memes, business cards, hand-written notes without totals, or any non-receipt content must be rejected.
+
+If the image is NOT a receipt, return ONLY this JSON:
+{ "isReceipt": false, "reason": "<one short sentence explaining what the image actually shows>" }
+
+If the image IS a receipt, return ONLY this JSON (no other keys):
 {
+  "isReceipt": true,
   "storeName": "string",
   "storeABN": "string or null",
   "storeAddress": "string or null",
@@ -43,14 +56,14 @@ export async function parseReceiptImage(base64Image: string): Promise<ParsedRece
   "total": number,
   "paymentMethod": "string or null"
 }
-Use your best judgment to categorize the receipt. If you cannot determine a value, use reasonable defaults. All monetary values should be numbers (not strings). If you cannot read certain items clearly, do your best to approximate.`,
+Use your best judgment to categorize the receipt. If you cannot determine a value, use reasonable defaults. All monetary values should be numbers (not strings). If you cannot read certain items clearly, do your best to approximate. Do NOT fabricate a receipt from a non-receipt image — when in doubt, set isReceipt to false.`,
         },
         {
           role: 'user',
           content: [
             {
               type: 'text',
-              text: 'Please parse this receipt image and extract all information.',
+              text: 'Decide whether this image is a receipt. If yes, extract structured data; if not, return the rejection JSON.',
             },
             {
               type: 'image_url',
@@ -82,7 +95,11 @@ Use your best judgment to categorize the receipt. If you cannot determine a valu
   const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/\{[\s\S]*\}/);
   const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : content;
 
-  const parsed = JSON.parse(jsonStr) as ParsedReceipt;
+  const parsed = JSON.parse(jsonStr) as ParsedReceipt & { isReceipt?: boolean; reason?: string };
+
+  if (parsed.isReceipt === false) {
+    throw new NotAReceiptError(parsed.reason);
+  }
 
   // Validate category is a valid enum value
   const validCategories = Object.values(EBillCategory);

@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import Image from 'next/image';
+import { AppHeader } from '../../components/AppHeader';
 import { apiUrl, authHeaders } from '@/lib/api';
 import { EBillCategory } from '@backend/shared/types';
 
@@ -265,7 +266,8 @@ export default function BillDetailPage() {
 
   return (
     <div className='min-h-screen bg-background'>
-      <div className='mx-auto max-w-3xl px-4 py-8'>
+      <AppHeader />
+      <div className='mx-auto max-w-3xl px-4 py-8 pb-24 md:pb-8'>
         <Link href='/bills' className='text-sm text-muted hover:text-foreground'>&larr; All Bills</Link>
 
         <div className='mt-4 flex items-start justify-between'>
@@ -385,10 +387,10 @@ export default function BillDetailPage() {
             </div>
 
             <div className='flex gap-3'>
-              <button onClick={handleSave} disabled={saving} className='rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:brightness-110 disabled:opacity-50'>
+              <button onClick={handleSave} disabled={saving} className='btn-primary'>
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
-              <button onClick={() => setEditing(false)} className='rounded-lg border border-border px-4 py-2 text-sm text-foreground hover:bg-secondary'>
+              <button onClick={() => setEditing(false)} className='btn-ghost'>
                 Cancel
               </button>
             </div>

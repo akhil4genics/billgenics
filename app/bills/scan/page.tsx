@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { AppHeader } from '../../components/AppHeader';
 import { apiUrl, authHeaders } from '@/lib/api';
 import { EBillCategory } from '@backend/shared/types';
 
@@ -71,11 +72,18 @@ export default function ScanBillPage() {
         body: JSON.stringify({ image: base64Image }),
       });
 
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
+        if (data?.code === 'NOT_A_RECEIPT') {
+          setPreview(null);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          toast.error(data.error || 'That image does not look like a receipt.');
+          return;
+        }
         throw new Error('Scan failed');
       }
 
-      const data = await res.json();
       setParsed(data.data);
       toast.success('Receipt scanned successfully!');
     } catch {
@@ -176,8 +184,9 @@ export default function ScanBillPage() {
 
   return (
     <div className='min-h-screen bg-background'>
-      <div className='mx-auto max-w-3xl px-4 py-8'>
-        <Link href='/account' className='text-sm text-muted hover:text-foreground'>&larr; Dashboard</Link>
+      <AppHeader />
+      <div className='mx-auto max-w-3xl px-4 py-8 pb-24 md:pb-8'>
+        <Link href='/bills' className='text-sm text-muted hover:text-foreground'>&larr; Bills</Link>
         <h1 className='mt-2 text-2xl font-bold text-foreground'>Scan Receipt</h1>
 
         {!parsed ? (
@@ -365,13 +374,13 @@ export default function ScanBillPage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className='flex-1 rounded-lg bg-gradient-to-r from-primary to-accent py-3 text-sm font-medium text-white hover:brightness-110 disabled:opacity-50'
+                className='btn-primary flex-1'
               >
                 {saving ? 'Saving...' : 'Save Bill'}
               </button>
               <button
                 onClick={() => { setParsed(null); setPreview(null); }}
-                className='rounded-lg border border-border px-6 py-3 text-sm font-medium text-foreground hover:bg-secondary'
+                className='btn-ghost'
               >
                 Rescan
               </button>

@@ -44,6 +44,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       name: user.name,
       firstName: user.firstName,
       username: user.username,
+      adminUser: user.adminUser === true,
     });
   } catch (error) {
     console.error('Login error:', error);

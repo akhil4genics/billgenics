@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from './components/ThemeProvider';
+import { Footer } from './components/Footer';
 import { Providers } from './providers';
 import { Toaster } from 'react-hot-toast';
 import './globals.css';
@@ -56,10 +57,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en' suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}>
         <Providers>
           <ThemeProvider>
-            {children}
+            <div className='flex-1 flex flex-col'>{children}</div>
+            <Footer />
             <Toaster
               position='top-right'
               toastOptions={{

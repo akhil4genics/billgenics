@@ -24,6 +24,7 @@ export interface IEventModel extends Document {
   createdBy: Schema.Types.ObjectId;
   members: IEventMember[];
   status: EEventStatus;
+  inviteCode?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,6 +46,7 @@ const EventSchema = new Schema<IEventModel>(
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     members: { type: [EventMemberSchema], default: [] },
     status: { type: String, enum: Object.values(EEventStatus), default: EEventStatus.ACTIVE, required: true },
+    inviteCode: { type: String, unique: true, sparse: true, index: true },
   },
   { timestamps: true }
 );

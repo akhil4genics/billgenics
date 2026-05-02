@@ -155,7 +155,7 @@ export default function SignUpPage() {
 
         <main className='flex flex-1 items-center justify-center px-4 py-12 pt-32'>
           <div className='w-full max-w-md'>
-            <div className='rounded-2xl border border-border bg-card p-8 text-center shadow-lg'>
+            <div className='card-elevated p-8 text-center'>
               <div className='mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30'>
                 <EnvelopeIcon className='h-8 w-8 text-green-600 dark:text-green-400' />
               </div>
@@ -178,13 +178,13 @@ export default function SignUpPage() {
               <div className='mt-8 space-y-3'>
                 <button
                   onClick={() => setIsSubmitted(false)}
-                  className='w-full rounded-lg border border-border px-4 py-3 font-medium text-foreground transition-colors hover:bg-secondary'
+                  className='btn-ghost-block'
                 >
                   Use a different email
                 </button>
                 <Link
                   href='/signin'
-                  className='block w-full rounded-lg bg-primary px-4 py-3 font-medium text-white transition-colors hover:bg-primary-hover'
+                  className='btn-primary-block block'
                 >
                   Back to sign in
                 </Link>
@@ -205,7 +205,7 @@ export default function SignUpPage() {
 
       <main className='flex flex-1 items-center justify-center px-4 py-12 pt-32'>
         <div className='w-full max-w-md'>
-          <div className='rounded-2xl border border-border bg-card p-8 shadow-lg'>
+          <div className='card-elevated p-8'>
             <div className='mb-8 text-center'>
               <h1 className='text-2xl font-bold text-foreground'>Create your account</h1>
               <p className='mt-2 text-muted'>Start organizing your memories today</p>
@@ -342,7 +342,7 @@ export default function SignUpPage() {
               <button
                 type='submit'
                 disabled={isLoading}
-                className='w-full rounded-lg bg-primary px-4 py-3 font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50'
+                className='btn-primary-block'
               >
                 {isLoading ? 'Creating account...' : 'Create account'}
               </button>

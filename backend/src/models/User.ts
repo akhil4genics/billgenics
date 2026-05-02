@@ -24,6 +24,7 @@ export interface IUser extends Document {
   password: string;
   activated: boolean;
   userVerified: boolean;
+  adminUser: boolean;
   name: string;
   loginSession: ILoginSession;
   createdAt: Date;
@@ -58,6 +59,7 @@ const UserSchema = new Schema<IUser>(
     password: { type: String, required: true },
     activated: { type: Boolean, default: false },
     userVerified: { type: Boolean, default: false },
+    adminUser: { type: Boolean, default: false },
     name: { type: String, required: true, trim: true },
     loginSession: { type: LoginSessionSchema, default: () => ({}) },
   },

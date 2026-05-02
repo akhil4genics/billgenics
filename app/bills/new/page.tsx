@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { AppHeader } from '../../components/AppHeader';
 import { apiUrl, authHeaders } from '@/lib/api';
 import { EBillCategory } from '@backend/shared/types';
 
@@ -121,8 +122,9 @@ export default function NewBillPage() {
 
   return (
     <div className='min-h-screen bg-background'>
-      <div className='mx-auto max-w-3xl px-4 py-8'>
-        <Link href='/account' className='text-sm text-muted hover:text-foreground'>&larr; Dashboard</Link>
+      <AppHeader />
+      <div className='mx-auto max-w-3xl px-4 py-8 pb-24 md:pb-8'>
+        <Link href='/bills' className='text-sm text-muted hover:text-foreground'>&larr; Bills</Link>
         <h1 className='mt-2 text-2xl font-bold text-foreground'>Add Bill Manually</h1>
 
         <form onSubmit={handleSubmit} className='mt-8 space-y-6'>
@@ -357,7 +359,7 @@ export default function NewBillPage() {
           <button
             type='submit'
             disabled={saving}
-            className='w-full rounded-lg bg-gradient-to-r from-primary to-accent py-3 text-sm font-medium text-white hover:brightness-110 disabled:opacity-50'
+            className='btn-primary-block'
           >
             {saving ? 'Saving...' : 'Save Bill'}
           </button>
