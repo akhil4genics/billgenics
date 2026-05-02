@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Header } from './components/Header';
-import { useTheme } from './components/ThemeProvider';
 
 // ─── Scroll-triggered fade-in wrapper ───────────────────────────────────────
 
@@ -496,71 +495,6 @@ function CTA() {
   );
 }
 
-// ─── Footer ─────────────────────────────────────────────────────────────────
-
-function Footer() {
-  const { theme } = useTheme();
-
-  return (
-    <footer className='border-t border-border bg-card'>
-      <div className='mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8'>
-        <div className='grid gap-10 md:grid-cols-4'>
-          <div className='md:col-span-1'>
-            <Link href='/' className='inline-block'>
-              <Image
-                src={theme === 'dark' ? '/images/billgenics.png' : '/images/billgenics_coloured.png'}
-                alt='BillGenics'
-                width={560}
-                height={160}
-                className='h-32 w-auto'
-              />
-            </Link>
-            <p className='mt-4 max-w-xs text-sm leading-relaxed text-muted'>
-              Smart expense tracking, receipt scanning, and bill splitting — all in one app.
-            </p>
-          </div>
-
-          <div>
-            <h3 className='text-sm font-semibold text-foreground'>Product</h3>
-            <ul className='mt-4 space-y-3'>
-              <li><a href='#features' className='text-sm text-muted transition-colors hover:text-foreground'>Features</a></li>
-              <li><a href='#how-it-works' className='text-sm text-muted transition-colors hover:text-foreground'>How It Works</a></li>
-              <li><Link href='/blogs' className='text-sm text-muted transition-colors hover:text-foreground'>Blog</Link></li>
-              <li><a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>Security</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className='text-sm font-semibold text-foreground'>Company</h3>
-            <ul className='mt-4 space-y-3'>
-              <li><a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>About</a></li>
-              <li><a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>Contact</a></li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className='text-sm font-semibold text-foreground'>Legal</h3>
-            <ul className='mt-4 space-y-3'>
-              <li><a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>Privacy Policy</a></li>
-              <li><a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>Terms of Service</a></li>
-            </ul>
-          </div>
-        </div>
-
-        <div className='mt-14 flex flex-col items-center justify-between gap-4 border-t border-border pt-8 sm:flex-row'>
-          <p className='text-sm text-muted'>
-            &copy; {new Date().getFullYear()} BillGenics. All rights reserved.
-          </p>
-          <div className='flex gap-6'>
-            <a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>Twitter</a>
-            <a href='#' className='text-sm text-muted transition-colors hover:text-foreground'>LinkedIn</a>
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -591,7 +525,6 @@ export default function Home() {
         <TestimonialBand />
         <CTA />
       </main>
-      <Footer />
     </div>
   );
 }
