@@ -20,7 +20,7 @@ export class NotAReceiptError extends Error {
   }
 }
 
-export async function parseReceiptImage(base64Image: string): Promise<ParsedReceipt> {
+export async function parseReceiptImage(imageUrl: string): Promise<ParsedReceipt> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY is not configured');
@@ -68,7 +68,7 @@ Use your best judgment to categorize the receipt. If you cannot determine a valu
             {
               type: 'image_url',
               image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`,
+                url: imageUrl,
               },
             },
           ],

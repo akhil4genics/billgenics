@@ -26,16 +26,46 @@ interface ParsedBill {
   tax: number;
   total: number;
   paymentMethod?: string;
+  receiptImageKey?: string;
+}
+
+const SCAN_MAX_BYTES = 5 * 1024 * 1024;
+const SCAN_MAX_DIMENSION = 1600;
+
+async function compressImage(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, SCAN_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D context unavailable');
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+
+  for (const quality of [0.85, 0.75, 0.65, 0.55, 0.45]) {
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), 'image/jpeg', quality)
+    );
+    if (!blob) throw new Error('Image encoding failed');
+    if (blob.size <= SCAN_MAX_BYTES) return blob;
+  }
+  throw new Error('Could not compress image under 5MB');
 }
 
 export default function ScanBillPage() {
   useSession({ required: true });
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [scanning, setScanning] = useState(false);
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [parsed, setParsed] = useState<ParsedBill | null>(null);
+  const [scanKey, setScanKey] = useState<string | null>(null);
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -46,38 +76,60 @@ export default function ScanBillPage() {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Image must be under 10MB');
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('Image must be under 20MB');
       return;
     }
 
-    // Show preview
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const base64 = ev.target?.result as string;
-      setPreview(base64);
-      await scanReceipt(base64);
-    };
-    reader.readAsDataURL(file);
+    setScanning(true);
+    try {
+      const compressed = await compressImage(file);
+      const previewUrl = URL.createObjectURL(compressed);
+      setPreview(previewUrl);
+      await scanReceipt(compressed);
+    } catch {
+      toast.error('Failed to process image. Please try again.');
+      setScanning(false);
+    }
   }
 
-  async function scanReceipt(base64Image: string) {
+  async function scanReceipt(blob: Blob) {
     try {
-      setScanning(true);
       const headers = await authHeaders();
+      const contentType = blob.type || 'image/jpeg';
 
-      const res = await fetch(`${apiUrl()}/api/bills/scan`, {
+      // 1. Get presigned upload URL for a temp scan key
+      const urlRes = await fetch(`${apiUrl()}/api/bills/scan/upload-url`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image }),
+        body: JSON.stringify({ contentType }),
+      });
+      if (!urlRes.ok) throw new Error('Failed to get upload URL');
+      const { data: { uploadUrl, key } } = await urlRes.json();
+
+      // 2. Upload directly to S3
+      const putRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': contentType },
+        body: blob,
+      });
+      if (!putRes.ok) throw new Error('Failed to upload image');
+
+      // 3. Ask backend to validate + extract via OpenAI (single round-trip)
+      const scanRes = await fetch(`${apiUrl()}/api/bills/scan`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key }),
       });
 
-      const data = await res.json().catch(() => null);
+      const data = await scanRes.json().catch(() => null);
 
-      if (!res.ok) {
+      if (!scanRes.ok) {
         if (data?.code === 'NOT_A_RECEIPT') {
           setPreview(null);
-          if (fileInputRef.current) fileInputRef.current.value = '';
+          setScanKey(null);
+          if (cameraInputRef.current) cameraInputRef.current.value = '';
+          if (galleryInputRef.current) galleryInputRef.current.value = '';
           toast.error(data.error || 'That image does not look like a receipt.');
           return;
         }
@@ -85,6 +137,7 @@ export default function ScanBillPage() {
       }
 
       setParsed(data.data);
+      setScanKey(data.data.receiptImageKey || key);
       toast.success('Receipt scanned successfully!');
     } catch {
       toast.error('Failed to scan receipt. Try again or enter manually.');
@@ -100,53 +153,17 @@ export default function ScanBillPage() {
       setSaving(true);
       const headers = await authHeaders();
 
-      // 1. Create the bill
       const res = await fetch(`${apiUrl()}/api/bills`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...parsed,
+          receiptImageKey: scanKey || parsed.receiptImageKey,
           entryMethod: 'scan',
         }),
       });
 
       if (!res.ok) throw new Error('Save failed');
-      const { data: bill } = await res.json();
-
-      // 2. Upload scanned receipt image if we have a preview
-      if (preview && bill._id) {
-        try {
-          const isDataUrl = preview.startsWith('data:');
-          const contentType = isDataUrl ? (preview.match(/data:(.*?);/)?.[1] || 'image/jpeg') : 'image/jpeg';
-          const ext = contentType === 'image/png' ? 'png' : 'jpg';
-
-          // Get presigned upload URL
-          const urlRes = await fetch(`${apiUrl()}/api/bills/${bill._id}/upload-receipt`, {
-            method: 'POST',
-            headers: { ...headers, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contentType }),
-          });
-
-          if (urlRes.ok) {
-            const { data: { uploadUrl, key } } = await urlRes.json();
-
-            // Convert base64 to blob and upload
-            const response = await fetch(preview);
-            const blob = await response.blob();
-            await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': contentType }, body: blob });
-
-            // Mark upload complete
-            await fetch(`${apiUrl()}/api/bills/${bill._id}/upload-complete`, {
-              method: 'POST',
-              headers: { ...headers, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ key }),
-            });
-          }
-        } catch {
-          // Non-critical — bill is already saved, receipt upload is best-effort
-          console.error('Failed to upload receipt image');
-        }
-      }
 
       toast.success('Bill saved!');
       router.push('/bills');
@@ -192,10 +209,7 @@ export default function ScanBillPage() {
         {!parsed ? (
           <div className='mt-8'>
             {/* Upload Area */}
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className='flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border p-12 transition-colors hover:border-primary/50 hover:bg-primary/5'
-            >
+            <div className='flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border p-8 sm:p-12'>
               {scanning ? (
                 <div className='text-center'>
                   <div className='mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent' />
@@ -208,21 +222,52 @@ export default function ScanBillPage() {
                   <p className='mt-4 text-sm text-muted'>Processing...</p>
                 </div>
               ) : (
-                <>
+                <div className='flex flex-col items-center'>
                   <svg className='h-16 w-16 text-muted' fill='none' viewBox='0 0 24 24' strokeWidth={1} stroke='currentColor'>
                     <path strokeLinecap='round' strokeLinejoin='round' d='M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z' />
                     <path strokeLinecap='round' strokeLinejoin='round' d='M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z' />
                   </svg>
-                  <p className='mt-4 text-lg font-medium text-foreground'>Take a photo or upload receipt</p>
-                  <p className='mt-1 text-sm text-muted'>Supports JPG, PNG up to 10MB</p>
-                </>
+                  <p className='mt-4 text-lg font-medium text-foreground'>Add a receipt</p>
+                  <p className='mt-1 text-sm text-muted'>JPG or PNG, up to 20MB</p>
+
+                  <div className='mt-6 flex w-full flex-col gap-3 sm:max-w-md sm:flex-row'>
+                    <button
+                      type='button'
+                      onClick={() => cameraInputRef.current?.click()}
+                      className='btn-primary flex-1'
+                    >
+                      <svg className='h-5 w-5' fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>
+                        <path strokeLinecap='round' strokeLinejoin='round' d='M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z' />
+                        <path strokeLinecap='round' strokeLinejoin='round' d='M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z' />
+                      </svg>
+                      Take Photo
+                    </button>
+                    <button
+                      type='button'
+                      onClick={() => galleryInputRef.current?.click()}
+                      className='btn-secondary flex-1'
+                    >
+                      <svg className='h-5 w-5' fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>
+                        <path strokeLinecap='round' strokeLinejoin='round' d='m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z' />
+                      </svg>
+                      Choose from Gallery
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
             <input
-              ref={fileInputRef}
+              ref={cameraInputRef}
               type='file'
               accept='image/*'
               capture='environment'
+              onChange={handleFileSelect}
+              className='hidden'
+            />
+            <input
+              ref={galleryInputRef}
+              type='file'
+              accept='image/*'
               onChange={handleFileSelect}
               className='hidden'
             />
@@ -379,7 +424,7 @@ export default function ScanBillPage() {
                 {saving ? 'Saving...' : 'Save Bill'}
               </button>
               <button
-                onClick={() => { setParsed(null); setPreview(null); }}
+                onClick={() => { setParsed(null); setPreview(null); setScanKey(null); }}
                 className='btn-ghost'
               >
                 Rescan

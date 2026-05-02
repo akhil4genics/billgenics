@@ -3,7 +3,7 @@ import { z } from 'zod';
 import mongoose from 'mongoose';
 import { AuthRequest } from '../middleware/auth';
 import Bill, { EBillCategory, EBillStatus, EEntryMethod } from '../models/Bill';
-import { getPresignedUploadUrl, getPresignedUrl } from '../lib/s3';
+import { getPresignedUploadUrl, getPresignedUrl, deleteS3Object, copyS3Object } from '../lib/s3';
 import { parseReceiptImage, NotAReceiptError } from '../lib/openai';
 
 const billItemSchema = z.object({
@@ -105,11 +105,25 @@ export async function createBill(req: AuthRequest, res: Response): Promise<void>
     const userId = req.user!.id;
     const parsed = createBillSchema.parse(req.body);
 
+    const billId = new mongoose.Types.ObjectId();
+    let finalReceiptKey = parsed.receiptImageKey;
+
+    // If the receipt was uploaded to the temp scan area, move it under the new bill's folder
+    // so receipts are grouped per-bill and `scans/temp/` only ever holds in-flight or orphaned uploads.
+    if (parsed.receiptImageKey?.startsWith(`scans/temp/${userId}/`)) {
+      const filename = parsed.receiptImageKey.split('/').pop() || `${Date.now()}.jpg`;
+      const destKey = `receipts/${userId}/${billId.toString()}/${filename}`;
+      await copyS3Object(parsed.receiptImageKey, destKey);
+      finalReceiptKey = destKey;
+    }
+
     const billData: Record<string, unknown> = {
       ...parsed,
+      _id: billId,
       userId,
       date: new Date(parsed.date),
       tags: parsed.tags.map((t) => t.trim().toLowerCase()).filter(Boolean),
+      receiptImageKey: finalReceiptKey,
     };
 
     if (parsed.warranty?.expiryDate) {
@@ -120,6 +134,13 @@ export async function createBill(req: AuthRequest, res: Response): Promise<void>
     }
 
     const bill = await Bill.create(billData);
+
+    // Best-effort cleanup of the temp scan once the bill row is durable
+    if (parsed.receiptImageKey?.startsWith(`scans/temp/${userId}/`)) {
+      deleteS3Object(parsed.receiptImageKey).catch((err) =>
+        console.error('Failed to delete temp scan after move:', err)
+      );
+    }
 
     res.status(201).json({ success: true, data: bill });
   } catch (error) {
@@ -132,23 +153,38 @@ export async function createBill(req: AuthRequest, res: Response): Promise<void>
   }
 }
 
-export async function scanReceipt(req: AuthRequest, res: Response): Promise<void> {
+export async function getScanUploadUrl(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const { image } = req.body;
+    const userId = req.user!.id;
+    const { contentType = 'image/jpeg' } = req.body;
+    const ext = contentType === 'image/png' ? 'png' : 'jpg';
+    const random = Math.random().toString(36).slice(2, 10);
+    const key = `scans/temp/${userId}/${Date.now()}-${random}.${ext}`;
+    const uploadUrl = await getPresignedUploadUrl(key, contentType);
+    res.json({ success: true, data: { uploadUrl, key } });
+  } catch (error) {
+    console.error('Error getting scan upload URL:', error);
+    res.status(500).json({ error: 'Failed to generate upload URL' });
+  }
+}
 
-    if (!image || typeof image !== 'string') {
-      res.status(400).json({ error: 'Base64 image data is required' });
-      return;
-    }
+export async function scanReceipt(req: AuthRequest, res: Response): Promise<void> {
+  const userId = req.user!.id;
+  const { key } = req.body;
 
-    // Remove data URL prefix if present
-    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+  if (!key || typeof key !== 'string' || !key.startsWith(`scans/temp/${userId}/`)) {
+    res.status(400).json({ error: 'Invalid scan key' });
+    return;
+  }
 
-    const parsed = await parseReceiptImage(base64Data);
-
-    res.json({ success: true, data: parsed });
+  try {
+    const imageUrl = await getPresignedUrl(key);
+    const parsed = await parseReceiptImage(imageUrl);
+    res.json({ success: true, data: { ...parsed, receiptImageKey: key } });
   } catch (error) {
     if (error instanceof NotAReceiptError) {
+      // Best-effort: discard the uploaded image so the bucket doesn't accumulate non-receipts
+      deleteS3Object(key).catch((err) => console.error('Failed to delete rejected scan:', err));
       res.status(400).json({ error: error.message, code: 'NOT_A_RECEIPT' });
       return;
     }

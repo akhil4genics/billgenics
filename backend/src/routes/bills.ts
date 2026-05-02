@@ -4,6 +4,7 @@ import {
   listBills,
   createBill,
   scanReceipt,
+  getScanUploadUrl,
   getBillStats,
   getBill,
   updateBill,
@@ -21,6 +22,7 @@ router.use(requireAuth);
 
 router.get('/', listBills);
 router.post('/', createBill);
+router.post('/scan/upload-url', getScanUploadUrl);
 router.post('/scan', scanReceipt);
 router.get('/stats', getBillStats);
 router.get('/:billId', validateObjectId('billId'), getBill);
