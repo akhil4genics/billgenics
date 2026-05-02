@@ -2,6 +2,13 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import jwt from 'jsonwebtoken';
 
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
+if (!NEXTAUTH_SECRET) {
+  throw new Error(
+    'NEXTAUTH_SECRET is not set. In production, configure it via Amplify Secrets; locally, set it in .env.local.'
+  );
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   providers: [
@@ -53,7 +60,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Create access token for Express API calls (verified by backend using AUTH_SECRET)
         token.accessToken = jwt.sign(
           { id: user.id, email: user.email },
-          process.env.NEXTAUTH_SECRET!,
+          NEXTAUTH_SECRET,
           { expiresIn: '30d' }
         );
       }
@@ -78,5 +85,5 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: NEXTAUTH_SECRET,
 });

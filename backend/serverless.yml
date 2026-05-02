@@ -2,7 +2,8 @@ service: billgenics-backend
 
 frameworkVersion: '3'
 
-useDotenv: true
+# Only load .env for the local dev stage. Prod must come from SSM.
+useDotenv: ${self:custom.useDotenv.${sls:stage}, false}
 
 provider:
   name: aws
@@ -19,18 +20,18 @@ provider:
             - s3:GetObject
             - s3:PutObject
             - s3:DeleteObject
-          Resource: arn:aws:s3:::${env:S3_BUCKET_NAME}/*
+          Resource: arn:aws:s3:::${ssm:/billgenics/${sls:stage}/S3_BUCKET_NAME, env:S3_BUCKET_NAME}/*
   environment:
-    MONGODB_URI: ${env:MONGODB_URI}
-    S3_BUCKET_NAME: ${env:S3_BUCKET_NAME}
-    REGION: ${env:REGION}
-    SMTP_USER: ${env:SMTP_USER}
-    SMTP_PASSWORD: ${env:SMTP_PASSWORD}
-    SMTP_FROM_NAME: ${env:SMTP_FROM_NAME}
-    AUTH_SECRET: ${env:AUTH_SECRET}
-    FRONTEND_URL: ${env:FRONTEND_URL}
-    BACKEND_URL: ${env:BACKEND_URL}
-    OPENAI_API_KEY: ${env:OPENAI_API_KEY}
+    MONGODB_URI: ${ssm:/billgenics/${sls:stage}/MONGODB_URI, env:MONGODB_URI}
+    S3_BUCKET_NAME: ${ssm:/billgenics/${sls:stage}/S3_BUCKET_NAME, env:S3_BUCKET_NAME}
+    REGION: ${ssm:/billgenics/${sls:stage}/REGION, env:REGION}
+    SMTP_USER: ${ssm:/billgenics/${sls:stage}/SMTP_USER, env:SMTP_USER}
+    SMTP_PASSWORD: ${ssm:/billgenics/${sls:stage}/SMTP_PASSWORD, env:SMTP_PASSWORD}
+    SMTP_FROM_NAME: ${ssm:/billgenics/${sls:stage}/SMTP_FROM_NAME, env:SMTP_FROM_NAME}
+    AUTH_SECRET: ${ssm:/billgenics/${sls:stage}/AUTH_SECRET, env:AUTH_SECRET}
+    FRONTEND_URL: ${ssm:/billgenics/${sls:stage}/FRONTEND_URL, env:FRONTEND_URL}
+    BACKEND_URL: ${ssm:/billgenics/${sls:stage}/BACKEND_URL, env:BACKEND_URL}
+    OPENAI_API_KEY: ${ssm:/billgenics/${sls:stage}/OPENAI_API_KEY, env:OPENAI_API_KEY}
 
 plugins:
   - serverless-plugin-typescript
@@ -43,6 +44,8 @@ functions:
       - httpApi: '*'
 
 custom:
+  useDotenv:
+    dev: true
   serverless-offline:
     httpPort: 3001
     noPrependStageInUrl: true
