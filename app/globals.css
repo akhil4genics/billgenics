@@ -94,7 +94,9 @@ html {
 }
 
 /* Primary CTA — blue pill with blue shadow */
-.btn-primary {
+.btn-primary,
+.btn-primary-lg,
+.btn-primary-block {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -108,11 +110,15 @@ html {
   box-shadow: var(--shadow-primary);
   transition: background-color 0.2s, box-shadow 0.2s, color 0.2s;
 }
-.btn-primary:hover:not(:disabled) {
+.btn-primary:hover:not(:disabled),
+.btn-primary-lg:hover:not(:disabled),
+.btn-primary-block:hover:not(:disabled) {
   background-color: var(--primary-hover);
   box-shadow: var(--shadow-primary-hover);
 }
-.btn-primary:disabled {
+.btn-primary:disabled,
+.btn-primary-lg:disabled,
+.btn-primary-block:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
