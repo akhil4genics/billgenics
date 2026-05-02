@@ -92,12 +92,7 @@ export default function BlogsPage() {
                           </h2>
                           <p className='mt-4 text-base leading-relaxed text-muted'>{featured.excerpt}</p>
                         </div>
-                        <div className='mt-8 flex items-center gap-3 text-sm text-muted'>
-                          <div className='flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary'>
-                            {featured.author?.name?.charAt(0)?.toUpperCase() || 'B'}
-                          </div>
-                          <span className='text-foreground'>{featured.author?.name || 'BillGenics'}</span>
-                          <span>·</span>
+                        <div className='mt-8 text-sm text-muted'>
                           <span>{formatDate(featured.publishedAt)}</span>
                         </div>
                       </div>
@@ -134,8 +129,7 @@ export default function BlogsPage() {
                           </div>
                           <h3 className='mt-3 text-xl font-semibold leading-snug text-foreground'>{blog.title}</h3>
                           <p className='mt-2 line-clamp-3 text-sm leading-relaxed text-muted'>{blog.excerpt}</p>
-                          <div className='mt-5 flex items-center justify-between text-xs text-muted'>
-                            <span>{blog.author?.name || 'BillGenics'}</span>
+                          <div className='mt-5 flex items-center justify-end text-xs text-muted'>
                             <span>{formatDate(blog.publishedAt)}</span>
                           </div>
                         </div>

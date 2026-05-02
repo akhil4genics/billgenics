@@ -8,7 +8,11 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const s3Client = new S3Client({
-  region: process.env.REGION || 'us-east-1',
+  region: process.env.REGION || 'ap-southeast-2',
+  // AWS SDK v3 (>=3.729) injects a CRC32 checksum into presigned URLs by default,
+  // which breaks browser PUT uploads (checksum placeholder vs. real content mismatch).
+  requestChecksumCalculation: 'WHEN_REQUIRED',
+  responseChecksumValidation: 'WHEN_REQUIRED',
   ...(process.env.ACCESS_KEY_AWS && process.env.SECRET_KEY_AWS
     ? {
         credentials: {

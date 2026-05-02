@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useState, type ChangeEvent } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import toast from 'react-hot-toast';
 import { apiUrl, authHeaders } from '@/lib/api';
 import type { IBlog, IBlogSection } from '@backend/shared/types';
@@ -28,13 +28,22 @@ export function BlogEditor({ initial, mode }: Props) {
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   function updateSection(i: number, patch: Partial<EditorSection>) {
     setSections((prev) => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
   }
 
   function addSection() {
-    setSections((prev) => [...prev, { title: '', description: '' }]);
+    setSections((prev) => {
+      const next = [...prev, { title: '', description: '' }];
+      requestAnimationFrame(() => {
+        const el = sectionRefs.current[next.length - 1];
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el?.querySelector<HTMLInputElement>('input[type="text"], input:not([type])')?.focus();
+      });
+      return next;
+    });
   }
 
   function removeSection(i: number) {
@@ -242,22 +251,19 @@ export function BlogEditor({ initial, mode }: Props) {
 
         {/* Sections */}
         <div className='rounded-2xl border border-border bg-card p-6'>
-          <div className='flex items-center justify-between'>
-            <h2 className='text-lg font-semibold text-foreground'>Sections</h2>
-            <button
-              type='button'
-              onClick={addSection}
-              className='rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20'
-            >
-              + Add section
-            </button>
-          </div>
+          <h2 className='text-lg font-semibold text-foreground'>Sections</h2>
 
           <div className='mt-5 space-y-6'>
             {sections.map((section, i) => {
               const uploadKey = `section-${i}`;
               return (
-                <div key={i} className='rounded-xl border border-border bg-background p-5'>
+                <div
+                  key={i}
+                  ref={(el) => {
+                    sectionRefs.current[i] = el;
+                  }}
+                  className='rounded-xl border border-border bg-background p-5'
+                >
                   <div className='flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-muted'>
                     <span>Section {i + 1}</span>
                     <div className='flex gap-2'>
@@ -294,6 +300,14 @@ export function BlogEditor({ initial, mode }: Props) {
               );
             })}
           </div>
+
+          <button
+            type='button'
+            onClick={addSection}
+            className='mt-6 w-full rounded-xl border border-dashed border-border bg-background px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/5'
+          >
+            + Add section
+          </button>
         </div>
       </div>
 

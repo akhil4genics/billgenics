@@ -60,12 +60,7 @@ export default function BlogDetailPage() {
                   {blog.title}
                 </h1>
                 <p className='mt-5 text-lg leading-relaxed text-muted'>{blog.excerpt}</p>
-                <div className='mt-6 flex items-center gap-3 text-sm text-muted'>
-                  <div className='flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary'>
-                    {blog.author?.name?.charAt(0)?.toUpperCase() || 'B'}
-                  </div>
-                  <span className='text-foreground'>{blog.author?.name || 'BillGenics'}</span>
-                  <span>·</span>
+                <div className='mt-6 text-sm text-muted'>
                   <span>{formatDate(blog.publishedAt || blog.createdAt)}</span>
                 </div>
               </header>
