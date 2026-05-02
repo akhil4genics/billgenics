@@ -7,6 +7,7 @@
     "deploy": "serverless deploy",
     "deploy:prod": "serverless deploy --stage prod",
     "remove": "serverless remove",
+    "sls-deploy": "sls deploy --stage prod",
     "lint": "eslint src/**/*.ts"
   },
   "dependencies": {

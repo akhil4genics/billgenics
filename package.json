@@ -9,7 +9,8 @@
     "dev:webpack": "NODE_OPTIONS='--no-warnings' NEXT_DISABLE_TURBOPACK=1 next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sls-deploy": "cd backend && sls deploy --stage prod"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.2",
