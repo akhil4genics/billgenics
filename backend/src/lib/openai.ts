@@ -107,5 +107,10 @@ Use your best judgment to categorize the receipt. If you cannot determine a valu
     parsed.category = EBillCategory.OTHER;
   }
 
+  // Drop refund / negative-priced lines so they don't pollute the user's bill
+  parsed.items = (parsed.items || []).filter(
+    (item) => item.unitPrice >= 0 && item.total >= 0
+  );
+
   return parsed;
 }

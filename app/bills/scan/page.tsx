@@ -297,12 +297,21 @@ export default function ScanBillPage() {
               </div>
               <div>
                 <label className='block text-sm font-medium text-foreground'>Date</label>
-                <input
-                  type='date'
-                  value={parsed.date}
-                  onChange={(e) => updateField('date', e.target.value)}
-                  className='mt-1 w-full rounded-lg border border-border bg-card px-3 py-2 text-foreground'
-                />
+                <div className='mt-1 flex gap-2'>
+                  <input
+                    type='date'
+                    value={parsed.date}
+                    onChange={(e) => updateField('date', e.target.value)}
+                    className='w-full rounded-lg border border-border bg-card px-3 py-2 text-foreground'
+                  />
+                  <button
+                    type='button'
+                    onClick={() => updateField('date', new Date().toISOString().slice(0, 10))}
+                    className='whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10'
+                  >
+                    Today
+                  </button>
+                </div>
               </div>
               <div>
                 <label className='block text-sm font-medium text-foreground'>Category</label>
