@@ -148,8 +148,8 @@ export async function register(req: Request, res: Response): Promise<void> {
       },
     });
 
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
-    const verificationLink = `${backendUrl}/api/auth/verify?code=${verificationCode}&email=${encodeURIComponent(validatedData.email)}`;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const verificationLink = `${frontendUrl}/verify-email?code=${verificationCode}&email=${encodeURIComponent(validatedData.email)}`;
 
     const emailHtml = generateVerificationEmail(validatedData.firstName, verificationLink, 24);
     await sendEmail({
@@ -181,47 +181,89 @@ export async function register(req: Request, res: Response): Promise<void> {
   }
 }
 
-// GET /api/auth/verify
+type VerifyOutcome =
+  | { status: 'verified' }
+  | { status: 'invalid' }
+  | { status: 'expired' };
+
+async function performEmailVerification(
+  rawCode: unknown,
+  rawEmail: unknown
+): Promise<VerifyOutcome> {
+  const code = typeof rawCode === 'string' ? rawCode : '';
+  const email = typeof rawEmail === 'string' ? rawEmail : '';
+  if (!code || !email) return { status: 'invalid' };
+
+  const user = await User.findOne({
+    email: email.toLowerCase(),
+    'loginSession.registrationCode': code,
+  });
+  if (!user) return { status: 'invalid' };
+
+  if (
+    user.loginSession.registrationCodeExpiresAt &&
+    new Date() > new Date(user.loginSession.registrationCodeExpiresAt)
+  ) {
+    return { status: 'expired' };
+  }
+
+  user.activated = true;
+  user.userVerified = true;
+  user.loginSession.registrationCode = null;
+  user.loginSession.registrationCodeExpiresAt = null;
+  await user.save();
+
+  return { status: 'verified' };
+}
+
+/**
+ * Legacy GET — kept so verification emails already in user inboxes (which
+ * pointed at the backend) continue to work. Redirects through the frontend.
+ */
 export async function verifyEmail(req: Request, res: Response): Promise<void> {
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-
   try {
     const { code, email } = req.query as { code?: string; email?: string };
-
-    if (!code || !email) {
-      res.redirect(`${frontendUrl}/signin?error=invalid_verification`);
-      return;
+    const outcome = await performEmailVerification(code, email);
+    switch (outcome.status) {
+      case 'verified':
+        res.redirect(`${frontendUrl}/signin?verified=true`);
+        return;
+      case 'expired':
+        res.redirect(`${frontendUrl}/signin?error=expired_verification`);
+        return;
+      case 'invalid':
+        res.redirect(`${frontendUrl}/signin?error=invalid_verification`);
+        return;
     }
-
-    const user = await User.findOne({
-      email: email.toLowerCase(),
-      'loginSession.registrationCode': code,
-    });
-
-    if (!user) {
-      res.redirect(`${frontendUrl}/signin?error=invalid_verification`);
-      return;
-    }
-
-    if (
-      user.loginSession.registrationCodeExpiresAt &&
-      new Date() > new Date(user.loginSession.registrationCodeExpiresAt)
-    ) {
-      res.redirect(`${frontendUrl}/signin?error=expired_verification`);
-      return;
-    }
-
-    user.activated = true;
-    user.userVerified = true;
-    user.loginSession.registrationCode = null;
-    user.loginSession.registrationCodeExpiresAt = null;
-    await user.save();
-
-    res.redirect(`${frontendUrl}/signin?verified=true`);
   } catch (error) {
     console.error('Verification error:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     res.redirect(`${frontendUrl}/signin?error=verification_failed`);
+  }
+}
+
+/**
+ * JSON POST — used by the frontend `/verify-email` page so the link in the
+ * verification email can point at the frontend directly.
+ */
+export async function verifyEmailJson(req: Request, res: Response): Promise<void> {
+  try {
+    const { code, email } = (req.body ?? {}) as { code?: unknown; email?: unknown };
+    const outcome = await performEmailVerification(code, email);
+    switch (outcome.status) {
+      case 'verified':
+        res.json({ success: true });
+        return;
+      case 'expired':
+        res.status(400).json({ error: 'expired', message: 'Verification link has expired.' });
+        return;
+      case 'invalid':
+        res.status(400).json({ error: 'invalid', message: 'Invalid verification link.' });
+        return;
+    }
+  } catch (error) {
+    console.error('Verification error:', error);
+    res.status(500).json({ error: 'failed', message: 'Verification failed. Please try again later.' });
   }
 }
 

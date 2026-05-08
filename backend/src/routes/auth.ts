@@ -5,6 +5,7 @@ import {
   checkCredentials,
   register,
   verifyEmail,
+  verifyEmailJson,
   completeAccount,
   forgotPassword,
   resetPassword,
@@ -20,6 +21,7 @@ router.post('/login', authLimiter, login);
 router.post('/check-credentials', authLimiter, checkCredentials);
 router.post('/register', registerLimiter, register);
 router.get('/verify', verifyEmail);
+router.post('/verify', authLimiter, verifyEmailJson);
 router.post('/complete-account', authLimiter, completeAccount);
 router.post('/forgot-password', authLimiter, forgotPassword);
 router.post('/reset-password', authLimiter, resetPassword);
