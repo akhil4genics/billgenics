@@ -91,6 +91,62 @@ Each has its own `package.json`, `tsconfig.json`, and dependencies.
 - bcryptjs for password hashing (12 rounds)
 - jsonwebtoken for JWT verification
 
+## Backend Security Posture
+
+The Express app applies these defences in `app.ts` (in this order):
+
+1. **`trust proxy`** — API Gateway / Amplify / load balancers sit in front of
+   Lambda; trusting `X-Forwarded-*` makes `req.ip` reflect the real client so
+   rate limiting and geo-IP lookups are accurate
+2. **Helmet** — standard security headers (HSTS, X-Content-Type-Options,
+   Referrer-Policy, X-DNS-Prefetch-Control, etc.). CSP is intentionally
+   disabled because this is a JSON API, not an HTML renderer
+3. **`express-mongo-sanitize`** — strips `$`-prefixed and dotted keys from
+   request `body`/`query`/`params` to block NoSQL injection in dynamic
+   Mongoose queries (e.g. `email: { $gt: '' }` payloads)
+4. **CORS allowlist** — `FRONTEND_URL` is parsed as a comma-separated list, so
+   prod + preview origins can both be allowed; unknown Origins are rejected
+5. **JSON / urlencoded body parsers capped at 1 MB** — large file uploads must
+   go through presigned S3 URLs
+
+Per-route protections:
+- **In-memory rate limiter** (`middleware/rateLimiter.ts`) with per-IP+path
+  buckets. Tunings: `/auth/*` 10/15min (login), 5/hr (register), 20/15min
+  (verify-login-challenge); `/bills/scan` 30/hr (OpenAI is paid);
+  `/events/:id/invite` 20/hr (email abuse); `/recurring/sync` 60/hr
+- **JWT auth middleware** (`middleware/auth.ts`) verifies HS256 signatures
+  using `AUTH_SECRET` — must match `NEXTAUTH_SECRET` on the frontend
+- **ObjectId validation** rejects malformed `:id` params before they reach
+  controllers
+
+Account security (per-user, modelled on `User.loginSecurity`):
+- **Failed-attempt lockout** — 5 wrong passwords inside the rolling counter
+  locks the account for 15 minutes (HTTP 423). Counter resets on success or
+  when the lockout expires
+- **New-device email-code challenge** — geo-IP via `geoip-lite` resolves the
+  client's country. If the country (or IP, for localhost) is not in the
+  user's `knownCountries` / `knownIPs`, `check-credentials` issues a 6-digit
+  code (10-minute TTL, bcrypt-hashed at rest), emails it, and returns
+  `requiresChallenge: true`. The user submits the code via
+  `/verify-login-challenge`, which marks the device known and clears the
+  challenge. `/login` then proceeds normally
+- **Trust on first use** — a user with no login history yet is treated as
+  "known" for their first login (so right after email verification they can
+  sign in without an extra step). Subsequent new countries trigger a challenge
+- **Login activity log** — last 50 sign-in events stored on the user (IP,
+  country, user-agent, timestamp, status). Statuses include `success`,
+  `failure`, `locked`, `challenged`, `challenge_passed`, `challenge_failed`.
+  Surfaced via `GET /api/auth/sessions` for an account-security UI
+- **Email enumeration mitigation** — wrong email runs a dummy bcrypt compare
+  to keep response timings indistinguishable from wrong-password
+- **Verification email link** points at the frontend (`${FRONTEND_URL}/verify-email`),
+  which calls the backend's JSON `POST /api/auth/verify` endpoint. The legacy
+  `GET /api/auth/verify` redirect handler is retained for in-flight emails
+
+Tunables live in `lib/loginSecurity.ts` (`MAX_FAILED_ATTEMPTS`,
+`LOCKOUT_DURATION_MS`, `CHALLENGE_TTL_MS`, `ACTIVITY_LOG_CAP`,
+`KNOWN_IPS_CAP`, `KNOWN_COUNTRIES_CAP`).
+
 ## Authentication Flow
 
 NextAuth (frontend) ↔ Express (backend) via JWT bridge:
@@ -172,13 +228,18 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 ## API Routes
 
 ### Auth (public — no JWT required)
-- `POST /api/auth/login` — Validate credentials, return user data
-- `POST /api/auth/check-credentials` — Credential validation only
-- `POST /api/auth/register` — Create account + send verification email
-- `GET /api/auth/verify` — Email verification (redirects to frontend)
+- `POST /api/auth/login` — Validate credentials, return user data. Applies lockout + new-device gate (defence in depth — refuses if device is unknown)
+- `POST /api/auth/check-credentials` — Credential validation. Returns `{ requiresChallenge: true, challengeId, sentTo, expiresInMinutes }` if signing in from a new IP/country (a 6-digit code is emailed). Frontend then calls `/verify-login-challenge`
+- `POST /api/auth/verify-login-challenge` — `{ email, challengeId, code }`. On success marks current IP + country as known, clears the challenge. Frontend can then complete NextAuth signIn
+- `POST /api/auth/register` — Create account + send verification email (link points to frontend `/verify-email`)
+- `GET /api/auth/verify` — Legacy email verification (redirects to frontend; kept for in-flight emails that were generated when the link still pointed at the backend)
+- `POST /api/auth/verify` — JSON verification used by the frontend `/verify-email` page
 - `POST /api/auth/complete-account` — Invited user account setup
 - `POST /api/auth/forgot-password` — Send password reset email
 - `POST /api/auth/reset-password` — Reset password with code
+
+### Auth (protected — JWT required)
+- `GET /api/auth/sessions` — Returns the user's last ~50 sign-in events (IP, country, user-agent, status, timestamp) plus their list of known countries/IPs. Backs an account-security UI
 
 ### Bills (protected — JWT required)
 - `GET /api/bills` — List user's bills (filter by month, year, category; paginated; `?q=` for full-text search)

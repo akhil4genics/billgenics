@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, validateObjectId } from '../middleware/auth';
+import { rateLimiter } from '../middleware/rateLimiter';
 import {
   listBills,
   createBill,
@@ -20,10 +21,13 @@ const router = Router();
 
 router.use(requireAuth);
 
+// OpenAI receipt scans are paid + expensive — cap per-IP usage tightly.
+const scanLimiter = rateLimiter(30, 60 * 60 * 1000); // 30/hr per IP
+
 router.get('/', listBills);
 router.post('/', createBill);
-router.post('/scan/upload-url', getScanUploadUrl);
-router.post('/scan', scanReceipt);
+router.post('/scan/upload-url', scanLimiter, getScanUploadUrl);
+router.post('/scan', scanLimiter, scanReceipt);
 router.get('/stats', getBillStats);
 router.get('/:billId', validateObjectId('billId'), getBill);
 router.put('/:billId', validateObjectId('billId'), updateBill);

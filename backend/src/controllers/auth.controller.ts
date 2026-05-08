@@ -2,50 +2,159 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { z } from 'zod';
-import User from '../models/User';
-import { sendEmail, generateVerificationEmail, generatePasswordResetEmail } from '../lib/email';
+import User, { ELoginActivityStatus, IUser } from '../models/User';
+import { HydratedDocument } from 'mongoose';
+import {
+  sendEmail,
+  generateVerificationEmail,
+  generatePasswordResetEmail,
+  generateLoginChallengeEmail,
+} from '../lib/email';
+import { AuthRequest } from '../middleware/auth';
+import {
+  CHALLENGE_TTL_MS,
+  clearFailedAttempts,
+  clearLoginChallenge,
+  extractRequestContext,
+  isKnownDevice,
+  isLocked,
+  issueLoginChallenge,
+  markDeviceKnown,
+  maskEmail,
+  recordActivity,
+  registerFailedAttempt,
+  verifyLoginChallenge,
+} from '../lib/loginSecurity';
+
+/**
+ * Validate password + lockout state + new-device challenge state.
+ * Mutates the user document but does NOT save it — the caller decides which
+ * state changes to persist.
+ *
+ * Result `outcome`:
+ *  - 'locked'     account is currently locked
+ *  - 'inactive'   email not yet verified
+ *  - 'bad_password' wrong password (counter incremented)
+ *  - 'just_locked'  this attempt tripped the lockout threshold
+ *  - 'challenge'  password OK but new device — caller must email a code
+ *  - 'ok'         password OK and device is known
+ */
+type LoginCheckOutcome =
+  | 'locked'
+  | 'inactive'
+  | 'bad_password'
+  | 'just_locked'
+  | 'challenge'
+  | 'ok';
+
+async function evaluateLogin(
+  rawEmail: unknown,
+  rawPassword: unknown,
+  ctx: ReturnType<typeof extractRequestContext>
+): Promise<{ user: HydratedDocument<IUser> | null; outcome: LoginCheckOutcome }> {
+  const email = typeof rawEmail === 'string' ? rawEmail.toLowerCase() : '';
+  const password = typeof rawPassword === 'string' ? rawPassword : '';
+  if (!email || !password) {
+    return { user: null, outcome: 'bad_password' };
+  }
+
+  const user = await User.findOne({ email });
+  if (!user) {
+    // Constant-ish work to mitigate email enumeration via timing.
+    await bcrypt.compare(password, '$2a$12$invalidhashinvalidhashinvalidhashinvalidhashinvali');
+    return { user: null, outcome: 'bad_password' };
+  }
+
+  if (isLocked(user)) {
+    recordActivity(user, ELoginActivityStatus.LOCKED, ctx);
+    return { user, outcome: 'locked' };
+  }
+
+  if (!user.activated) {
+    return { user, outcome: 'inactive' };
+  }
+
+  const passwordValid = await bcrypt.compare(password, user.password);
+  if (!passwordValid) {
+    const { locked } = registerFailedAttempt(user);
+    recordActivity(user, locked ? ELoginActivityStatus.LOCKED : ELoginActivityStatus.FAILURE, ctx);
+    return { user, outcome: locked ? 'just_locked' : 'bad_password' };
+  }
+
+  clearFailedAttempts(user);
+
+  if (!isKnownDevice(user, ctx)) {
+    return { user, outcome: 'challenge' };
+  }
+  return { user, outcome: 'ok' };
+}
 
 // POST /api/auth/login
+// Used by NextAuth.authorize after the frontend has cleared check-credentials.
+// Defends in depth: applies the same lockout/challenge gate as check-credentials,
+// so a direct call cannot bypass the new-device flow.
 export async function login(req: Request, res: Response): Promise<void> {
   try {
-    const { email, password } = req.body;
+    const ctx = extractRequestContext(req);
+    const { email, password } = req.body ?? {};
 
     if (!email || !password) {
       res.status(400).json({ error: 'Email and password are required' });
       return;
     }
 
-    const user = await User.findOne({ email: email.toString().toLowerCase() });
+    const { user, outcome } = await evaluateLogin(email, password, ctx);
 
     if (!user) {
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }
 
-    if (!user.activated) {
-      res.status(403).json({ error: 'Please verify your email before logging in.' });
-      return;
+    switch (outcome) {
+      case 'locked':
+        await user.save();
+        res.status(423).json({
+          error: 'Account temporarily locked due to too many failed attempts. Try again later.',
+        });
+        return;
+      case 'just_locked':
+        await user.save();
+        res.status(423).json({
+          error: 'Too many failed attempts. Account locked for 15 minutes.',
+        });
+        return;
+      case 'inactive':
+        res.status(403).json({ error: 'Please verify your email before logging in.' });
+        return;
+      case 'bad_password':
+        await user.save();
+        res.status(401).json({ error: 'Invalid email or password' });
+        return;
+      case 'challenge':
+        // Frontend should have called check-credentials first to obtain + clear
+        // the challenge. Refuse here.
+        await user.save();
+        res.status(403).json({
+          error: 'New-device verification required. Sign in via the BillGenics web app.',
+        });
+        return;
+      case 'ok':
+        recordActivity(user, ELoginActivityStatus.SUCCESS, ctx);
+        markDeviceKnown(user, ctx);
+        user.loginSession.loggedInAt = new Date();
+        user.loginSession.loginSessionExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        await user.save();
+
+        res.json({
+          id: user._id.toString(),
+          email: user.email,
+          name: user.name,
+          firstName: user.firstName,
+          username: user.username,
+          adminUser: user.adminUser === true,
+        });
+        return;
     }
-
-    const isPasswordValid = await bcrypt.compare(password.toString(), user.password);
-
-    if (!isPasswordValid) {
-      res.status(401).json({ error: 'Invalid email or password' });
-      return;
-    }
-
-    user.loginSession.loggedInAt = new Date();
-    user.loginSession.loginSessionExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-    user.save().catch((err: Error) => console.error('Failed to update login session:', err));
-
-    res.json({
-      id: user._id.toString(),
-      email: user.email,
-      name: user.name,
-      firstName: user.firstName,
-      username: user.username,
-      adminUser: user.adminUser === true,
-    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'An error occurred. Please try again.' });
@@ -53,40 +162,155 @@ export async function login(req: Request, res: Response): Promise<void> {
 }
 
 // POST /api/auth/check-credentials
+// Called by the signin page first. Returns { requiresChallenge: true } if the
+// device is new — the frontend then collects a code and calls /verify-login-challenge.
 export async function checkCredentials(req: Request, res: Response): Promise<void> {
   try {
-    const { email, password } = req.body;
+    const ctx = extractRequestContext(req);
+    const { email, password } = req.body ?? {};
 
     if (!email || !password) {
       res.status(400).json({ error: 'Email and password are required' });
       return;
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const { user, outcome } = await evaluateLogin(email, password, ctx);
 
     if (!user) {
       res.status(401).json({ error: 'Invalid email or password' });
       return;
     }
 
-    if (!user.activated) {
-      res.status(403).json({
-        error: 'Please verify your email before logging in. Check your inbox for the verification link.',
-      });
-      return;
+    switch (outcome) {
+      case 'locked':
+        await user.save();
+        res.status(423).json({
+          error: 'Account temporarily locked due to too many failed attempts. Try again later.',
+        });
+        return;
+      case 'just_locked':
+        await user.save();
+        res.status(423).json({
+          error: 'Too many failed attempts. Account locked for 15 minutes.',
+        });
+        return;
+      case 'inactive':
+        res.status(403).json({
+          error:
+            'Please verify your email before logging in. Check your inbox for the verification link.',
+        });
+        return;
+      case 'bad_password':
+        await user.save();
+        res.status(401).json({ error: 'Invalid email or password' });
+        return;
+      case 'challenge': {
+        const { challengeId, code } = await issueLoginChallenge(user, ctx);
+        recordActivity(user, ELoginActivityStatus.CHALLENGED, ctx);
+        await user.save();
+        await sendEmail({
+          to: user.email,
+          subject: 'Your BillGenics sign-in code',
+          html: generateLoginChallengeEmail(
+            user.firstName || user.name,
+            code,
+            ctx,
+            Math.round(CHALLENGE_TTL_MS / 60000)
+          ),
+        });
+        res.json({
+          success: true,
+          requiresChallenge: true,
+          challengeId,
+          sentTo: maskEmail(user.email),
+          expiresInMinutes: Math.round(CHALLENGE_TTL_MS / 60000),
+        });
+        return;
+      }
+      case 'ok':
+        await user.save();
+        res.json({ success: true, requiresChallenge: false });
+        return;
     }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      res.status(401).json({ error: 'Invalid email or password' });
-      return;
-    }
-
-    res.json({ success: true });
   } catch (error) {
     console.error('Check credentials error:', error);
     res.status(500).json({ error: 'An error occurred. Please try again.' });
+  }
+}
+
+// POST /api/auth/verify-login-challenge
+// Validates a 6-digit code from the new-device email. On success, marks the
+// current IP/country as known so the next /login call passes through.
+const verifyChallengeSchema = z.object({
+  email: z.string().email(),
+  challengeId: z.string().min(1),
+  code: z.string().min(4).max(8),
+});
+
+export async function verifyLoginChallengeEndpoint(req: Request, res: Response): Promise<void> {
+  try {
+    const ctx = extractRequestContext(req);
+    const parsed = verifyChallengeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid request' });
+      return;
+    }
+
+    const user = await User.findOne({ email: parsed.data.email.toLowerCase() });
+    if (!user) {
+      res.status(400).json({ error: 'Invalid challenge' });
+      return;
+    }
+
+    const result = await verifyLoginChallenge(user, parsed.data.challengeId, parsed.data.code);
+    if (!result.ok) {
+      recordActivity(user, ELoginActivityStatus.CHALLENGE_FAILED, ctx);
+      await user.save();
+      const message =
+        result.reason === 'expired'
+          ? 'This code has expired. Sign in again to get a new one.'
+          : 'Incorrect code.';
+      res.status(400).json({ error: message });
+      return;
+    }
+
+    markDeviceKnown(user, ctx);
+    clearLoginChallenge(user);
+    recordActivity(user, ELoginActivityStatus.CHALLENGE_PASSED, ctx);
+    await user.save();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Verify login challenge error:', error);
+    res.status(500).json({ error: 'An error occurred. Please try again.' });
+  }
+}
+
+// GET /api/auth/sessions
+// Returns the user's recent login activity (latest first). Auth required.
+export async function getSessions(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const userId = req.user!.id;
+    const user = await User.findById(userId)
+      .select('loginSecurity.recentActivity loginSecurity.knownCountries loginSecurity.knownIPs')
+      .lean();
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const activity = (user.loginSecurity?.recentActivity || [])
+      .slice()
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    res.json({
+      success: true,
+      data: {
+        recentActivity: activity,
+        knownCountries: user.loginSecurity?.knownCountries || [],
+        knownIPs: user.loginSecurity?.knownIPs || [],
+      },
+    });
+  } catch (error) {
+    console.error('Get sessions error:', error);
+    res.status(500).json({ error: 'Failed to load sessions' });
   }
 }
 

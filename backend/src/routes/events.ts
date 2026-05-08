@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, validateObjectId } from '../middleware/auth';
+import { rateLimiter } from '../middleware/rateLimiter';
 import {
   listEvents,
   createEvent,
@@ -31,7 +32,9 @@ router.get('/:eventId', validateObjectId('eventId'), getEvent);
 router.post('/:eventId/expenses', validateObjectId('eventId'), addExpense);
 router.put('/:eventId/expenses/:expenseId', validateObjectId('eventId'), updateExpense);
 router.delete('/:eventId/expenses/:expenseId', validateObjectId('eventId'), deleteExpense);
-router.post('/:eventId/invite', validateObjectId('eventId'), inviteMember);
+// Email invites can be abused for spam — rate-limit aggressively per IP.
+const inviteLimiter = rateLimiter(20, 60 * 60 * 1000); // 20/hr per IP
+router.post('/:eventId/invite', inviteLimiter, validateObjectId('eventId'), inviteMember);
 router.post('/:eventId/invite-link', validateObjectId('eventId'), generateInviteLink);
 router.get('/:eventId/balances', validateObjectId('eventId'), getBalances);
 router.post('/:eventId/settle', validateObjectId('eventId'), settleBalance);

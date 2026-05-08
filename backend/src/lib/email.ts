@@ -305,3 +305,37 @@ export function generateSettlementNotificationEmail(
   return wrap(`Settlement recorded in "${eventName}"`, body);
 }
 
+
+export function generateLoginChallengeEmail(
+  name: string,
+  code: string,
+  context: { country?: string; ipAddress?: string; userAgent?: string },
+  expiresInMinutes: number
+): string {
+  const safeName = name || 'there';
+  const where = context.country ? ` from ${context.country}` : '';
+  const device = context.userAgent ? ` (${context.userAgent})` : '';
+  const body = `
+    <tr>
+      <td style="padding: 40px;">
+        <h2 style="margin: 0 0 12px 0; color: ${BRAND_FOREGROUND}; font-size: 22px; font-weight: 700;">
+          Confirm it's you
+        </h2>
+        <p style="margin: 0 0 24px 0; color: ${BRAND_MUTED}; font-size: 15px; line-height: 1.6;">
+          Hi ${safeName}, we noticed a sign-in attempt to your BillGenics account${where}${device}.
+          To protect your account, enter the code below in the sign-in screen.
+        </p>
+        <div style="margin: 0 0 24px 0; padding: 24px; background-color: ${BRAND_SOFT_BG}; border-radius: 12px; border: 1px solid ${BRAND_BORDER}; text-align: center;">
+          <p style="margin: 0 0 8px 0; color: ${BRAND_MUTED}; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;">Verification code</p>
+          <p style="margin: 0; color: ${BRAND_FOREGROUND}; font-size: 36px; font-weight: 700; letter-spacing: 0.4em; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;">
+            ${code}
+          </p>
+        </div>
+        <p style="margin: 0 0 8px 0; color: ${BRAND_MUTED}; font-size: 13px; line-height: 1.6;">
+          This code expires in ${expiresInMinutes} minutes. If you didn't try to sign in, change your password immediately and contact support.
+        </p>
+      </td>
+    </tr>
+  `;
+  return wrap('Confirm your sign-in', body);
+}

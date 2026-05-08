@@ -1,5 +1,40 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+export enum ELoginActivityStatus {
+  SUCCESS = 'success',
+  FAILURE = 'failure',
+  LOCKED = 'locked',
+  CHALLENGED = 'challenged',
+  CHALLENGE_PASSED = 'challenge_passed',
+  CHALLENGE_FAILED = 'challenge_failed',
+}
+
+export interface ILoginActivityEntry {
+  ipAddress?: string;
+  country?: string;
+  userAgent?: string;
+  status: ELoginActivityStatus;
+  timestamp: Date;
+}
+
+export interface IPendingLoginChallenge {
+  id: string;
+  codeHash: string;
+  expiresAt: Date;
+  ipAddress?: string;
+  country?: string;
+  userAgent?: string;
+}
+
+export interface ILoginSecurity {
+  failedLoginAttempts: number;
+  lockedUntil?: Date | null;
+  knownCountries: string[];
+  knownIPs: string[];
+  pendingLoginChallenge?: IPendingLoginChallenge | null;
+  recentActivity: ILoginActivityEntry[];
+}
+
 export interface ILoginSession {
   sessionToken?: string | null;
   sessionExpiresAt?: Date | null;
@@ -27,10 +62,46 @@ export interface IUser extends Document {
   adminUser: boolean;
   name: string;
   loginSession: ILoginSession;
+  loginSecurity: ILoginSecurity;
   dismissedRecurringSuggestions: string[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+const LoginActivitySchema = new Schema<ILoginActivityEntry>(
+  {
+    ipAddress: { type: String },
+    country: { type: String },
+    userAgent: { type: String },
+    status: { type: String, enum: Object.values(ELoginActivityStatus), required: true },
+    timestamp: { type: Date, default: Date.now, required: true },
+  },
+  { _id: false }
+);
+
+const PendingChallengeSchema = new Schema<IPendingLoginChallenge>(
+  {
+    id: { type: String, required: true },
+    codeHash: { type: String, required: true },
+    expiresAt: { type: Date, required: true },
+    ipAddress: { type: String },
+    country: { type: String },
+    userAgent: { type: String },
+  },
+  { _id: false }
+);
+
+const LoginSecuritySchema = new Schema<ILoginSecurity>(
+  {
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockedUntil: { type: Date, default: null },
+    knownCountries: { type: [String], default: [] },
+    knownIPs: { type: [String], default: [] },
+    pendingLoginChallenge: { type: PendingChallengeSchema, default: null },
+    recentActivity: { type: [LoginActivitySchema], default: [] },
+  },
+  { _id: false }
+);
 
 const LoginSessionSchema = new Schema<ILoginSession>(
   {
@@ -63,6 +134,7 @@ const UserSchema = new Schema<IUser>(
     adminUser: { type: Boolean, default: false },
     name: { type: String, required: true, trim: true },
     loginSession: { type: LoginSessionSchema, default: () => ({}) },
+    loginSecurity: { type: LoginSecuritySchema, default: () => ({}) },
     dismissedRecurringSuggestions: { type: [String], default: [] },
   },
   {
