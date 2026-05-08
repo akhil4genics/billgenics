@@ -102,6 +102,30 @@ function BellIcon({ className }: { className?: string }) {
   );
 }
 
+function RepeatIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>
+      <path strokeLinecap='round' strokeLinejoin='round' d='M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99' />
+    </svg>
+  );
+}
+
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>
+      <path strokeLinecap='round' strokeLinejoin='round' d='M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5' />
+    </svg>
+  );
+}
+
+function HourglassIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>
+      <path strokeLinecap='round' strokeLinejoin='round' d='M12 6v6m0 0v6m0-6h.01M6 3.75h12M6 20.25h12M7.5 3.75v3.34c0 .92.398 1.794 1.092 2.392L12 12l3.408-2.518A3.165 3.165 0 0 0 16.5 7.09V3.75M7.5 20.25v-3.34c0-.92.398-1.794 1.092-2.392L12 12l3.408 2.518a3.165 3.165 0 0 1 1.092 2.392v3.34' />
+    </svg>
+  );
+}
+
 function ArrowUpRightIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill='none' viewBox='0 0 24 24' strokeWidth={2} stroke='currentColor'>
@@ -210,11 +234,11 @@ function Hero() {
                 </span>
               </div>
               <h1 className='text-5xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-6xl lg:text-7xl'>
-                Track bills <span className='design-text'>and</span> split
-                <br className='hidden sm:block' /> expenses <span className='design-text'>with</span> ease.
+                Track bills, <span className='design-text'>plan</span> ahead,
+                <br className='hidden sm:block' /> split <span className='design-text'>with</span> ease.
               </h1>
               <p className='mt-6 max-w-xl text-base leading-relaxed text-muted lg:text-lg'>
-                Scan receipts with AI, keep your spending organized by category, view monthly analytics, and split shared expenses with friends — all in one place.
+                Scan receipts with AI, schedule every recurring bill once and let BillGenics auto-add it to your month, get reminded before payments are due, and split shared expenses with friends — all in one place.
               </p>
               <div className='mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row lg:justify-start'>
                 <PrimaryButton href='/signup'>Get Started</PrimaryButton>
@@ -288,6 +312,12 @@ const features: Feature[] = [
     span: 'wide',
   },
   {
+    icon: RepeatIcon,
+    title: 'Recurring Bills on Autopilot',
+    description: 'Set up rent, insurance, daycare, subscriptions once — we auto-add each cycle to your month and remind you before it lands.',
+    image: '/images/expenses_tracker.png',
+  },
+  {
     icon: ChartIcon,
     title: 'Smart Analytics',
     description: 'See monthly breakdowns, category insights, and spending trends at a glance.',
@@ -298,12 +328,6 @@ const features: Feature[] = [
     title: 'Split with Friends',
     description: 'Create events, add shared expenses, and auto-calculate who owes whom.',
     image: '/images/calculations.png',
-  },
-  {
-    icon: ReceiptIcon,
-    title: 'Track Expenses',
-    description: 'Keep all your bills organized in one place. Search and filter effortlessly.',
-    image: '/images/expenses_tracker.png',
   },
   {
     icon: TagIcon,
@@ -376,14 +400,130 @@ function Features() {
   );
 }
 
+// ─── Recurring Bills deep-dive ──────────────────────────────────────────────
+
+function RecurringSection() {
+  const benefits: { icon: React.ComponentType<{ className?: string }>; title: string; description: string }[] = [
+    {
+      icon: RepeatIcon,
+      title: 'Any cadence, any rhythm',
+      description:
+        'Weekly groceries, fortnightly daycare, monthly insurance, quarterly water bill, annual domain renewal — or a custom interval in days. Pick once, never re-enter.',
+    },
+    {
+      icon: HourglassIcon,
+      title: 'End date or until you stop',
+      description:
+        'Bound a fixed-term contract (e.g. 12-month phone plan) with an end date — we auto-complete the schedule on the last cycle. Or leave it open for ongoing bills like rent.',
+    },
+    {
+      icon: CalendarIcon,
+      title: 'Auto-added to your month',
+      description:
+        'When the due date arrives, BillGenics automatically logs the bill against the right category. Your monthly totals reflect reality without you lifting a finger.',
+    },
+    {
+      icon: BellIcon,
+      title: 'Reminders before it lands',
+      description:
+        'Pick a lead time (3 days by default). We send an in-app notification before the cycle hits, so unexpected renewals never blow up your week.',
+    },
+  ];
+
+  return (
+    <section id='recurring' className='relative py-20 sm:py-28'>
+      <div className='absolute inset-0 -z-10 overflow-hidden'>
+        <div className='absolute -bottom-32 left-1/4 h-[500px] w-[500px] rounded-full bg-primary/5 blur-3xl' />
+      </div>
+      <div className='mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'>
+        <div className='grid items-start gap-12 lg:grid-cols-[1fr_1.1fr]'>
+          <Reveal>
+            <div>
+              <SectionLabel icon={RepeatIcon}>New · Recurring bills</SectionLabel>
+              <h2 className='mt-5 text-4xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-5xl'>
+                Stop guessing <span className='design-text'>what hits</span> next month.
+              </h2>
+              <p className='mt-5 max-w-xl text-base leading-relaxed text-muted'>
+                Rent, electricity, daycare, streaming, insurance — they all land on different
+                dates from different providers. Add each one as a recurring schedule and
+                BillGenics turns the chaos into a forward-looking timeline. You get the
+                upcoming spend at a glance, the bill auto-logged on the day it&apos;s due, and
+                a heads-up before it arrives.
+              </p>
+              <div className='mt-8 flex flex-col items-start gap-4 sm:flex-row'>
+                <PrimaryButton href='/signup'>Try it free</PrimaryButton>
+                <Link href='#features' className='text-sm font-semibold text-primary hover:underline'>
+                  See the full feature list →
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+
+          <div className='grid gap-4 sm:grid-cols-2'>
+            {benefits.map((benefit, i) => {
+              const { icon: Icon } = benefit;
+              return (
+                <Reveal key={benefit.title} delay={i * 100}>
+                  <div className='group h-full rounded-2xl border border-border bg-card p-6 transition-all duration-500 hover:-translate-y-1 hover:border-primary/30 hover:shadow-[0_20px_40px_-20px_rgba(5,85,241,0.2)]'>
+                    <div className='flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary'>
+                      <Icon className='h-5 w-5' />
+                    </div>
+                    <h3 className='mt-5 text-lg font-semibold text-foreground'>{benefit.title}</h3>
+                    <p className='mt-2 text-sm leading-relaxed text-muted'>{benefit.description}</p>
+                  </div>
+                </Reveal>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Mock timeline strip — concrete preview */}
+        <Reveal delay={200}>
+          <div className='mt-14 rounded-3xl border border-border bg-card p-6 sm:p-8'>
+            <div className='flex flex-wrap items-center justify-between gap-3'>
+              <div>
+                <p className='text-xs font-semibold uppercase tracking-[0.18em] text-muted'>
+                  Your forecast · next 30 days
+                </p>
+                <p className='mt-2 text-3xl font-bold text-foreground'>$2,184.50</p>
+              </div>
+              <span className='rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary'>
+                7 bills incoming
+              </span>
+            </div>
+            <div className='mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4'>
+              {[
+                { name: 'Origin Energy', amount: '$320.40', when: 'in 2d' },
+                { name: 'Daycare', amount: '$680.00', when: 'in 5d' },
+                { name: 'Netflix', amount: '$22.99', when: 'in 9d' },
+                { name: 'Car insurance', amount: '$148.10', when: 'in 14d' },
+              ].map((bill) => (
+                <div
+                  key={bill.name}
+                  className='rounded-xl border border-border bg-secondary/40 px-4 py-3 text-sm'
+                >
+                  <p className='font-semibold text-foreground'>{bill.name}</p>
+                  <p className='mt-1 text-xs text-muted'>
+                    {bill.when} · {bill.amount}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 // ─── How It Works ───────────────────────────────────────────────────────────
 
 function HowItWorks() {
   const steps = [
     { title: 'Create an Account', description: 'Sign up for free and verify your email. Get started in seconds.' },
     { title: 'Scan or Enter Bills', description: 'Take a photo of your receipt or enter details manually — AI does the rest.' },
-    { title: 'View Your Analytics', description: 'See monthly spending summaries, category breakdowns, and trends.' },
-    { title: 'Split Expenses', description: 'Create events, invite friends, add shared expenses, and settle up.' },
+    { title: 'Schedule Recurring Bills', description: 'Add rent, insurance, daycare, subscriptions once. Pick a cadence and (optionally) an end date — we handle the rest.' },
+    { title: 'Stay Ahead', description: 'See your forecast, get reminders before bills land, and split shared expenses with friends.' },
   ];
 
   return (
@@ -521,6 +661,7 @@ export default function Home() {
       <main>
         <Hero />
         <Features />
+        <RecurringSection />
         <HowItWorks />
         <TestimonialBand />
         <CTA />

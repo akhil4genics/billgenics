@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import useSWR from 'swr';
 import { apiUrl, authHeaders } from '@/lib/api';
-import { Header } from '../../../../components/Header';
+import { Header } from '@/components/Header';
 import { BlogEditor } from '../../BlogEditor';
 import type { IBlog } from '@backend/shared/types';
 

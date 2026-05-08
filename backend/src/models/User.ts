@@ -27,6 +27,7 @@ export interface IUser extends Document {
   adminUser: boolean;
   name: string;
   loginSession: ILoginSession;
+  dismissedRecurringSuggestions: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -62,6 +63,7 @@ const UserSchema = new Schema<IUser>(
     adminUser: { type: Boolean, default: false },
     name: { type: String, required: true, trim: true },
     loginSession: { type: LoginSessionSchema, default: () => ({}) },
+    dismissedRecurringSuggestions: { type: [String], default: [] },
   },
   {
     timestamps: true,

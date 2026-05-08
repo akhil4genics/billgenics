@@ -76,6 +76,12 @@ export function Header({ showNav = true, showAuthButtons = true }: HeaderProps) 
               Features
             </Link>
             <Link
+              href='/#recurring'
+              className='text-sm font-medium text-muted hover:text-foreground'
+            >
+              Recurring Bills
+            </Link>
+            <Link
               href='/#how-it-works'
               className='text-sm font-medium text-muted hover:text-foreground'
             >

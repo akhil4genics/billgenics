@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Header } from '../../components/Header';
+import { Header } from '@/components/Header';
 import { apiUrl } from '@/lib/api';
 
 function ResetPasswordForm() {

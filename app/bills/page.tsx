@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { AppHeader } from '../components/AppHeader';
+import { AppHeader } from '@/components/AppHeader';
 import { apiUrl, authHeaders } from '@/lib/api';
 import { EBillCategory } from '@backend/shared/types';
 

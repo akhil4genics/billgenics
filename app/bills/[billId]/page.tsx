@@ -6,7 +6,8 @@ import { useEffect, useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import Image from 'next/image';
-import { AppHeader } from '../../components/AppHeader';
+import { AppHeader } from '@/components/AppHeader';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { apiUrl, authHeaders } from '@/lib/api';
 import { EBillCategory } from '@backend/shared/types';
 
@@ -65,6 +66,7 @@ export default function BillDetailPage() {
   const params = useParams();
   const billId = params.billId as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const confirm = useConfirm();
 
   const [bill, setBill] = useState<Bill | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,7 +100,13 @@ export default function BillDetailPage() {
   }
 
   async function handleDelete() {
-    if (!confirm('Are you sure you want to delete this bill?')) return;
+    const ok = await confirm({
+      title: 'Delete this bill?',
+      message: 'This bill will be removed from your records. This cannot be undone.',
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
 
     try {
       const headers = await authHeaders();
@@ -226,7 +234,13 @@ export default function BillDetailPage() {
   }
 
   async function handleRemoveAttachment(key: string) {
-    if (!confirm('Remove this attachment?')) return;
+    const ok = await confirm({
+      title: 'Remove this attachment?',
+      message: 'The file will be detached from this bill.',
+      confirmText: 'Remove',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       const headers = await authHeaders();
       const res = await fetch(`${apiUrl()}/api/bills/${billId}/attachments`, {

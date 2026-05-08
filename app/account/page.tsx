@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { AppHeader } from '../components/AppHeader';
+import { AppHeader } from '@/components/AppHeader';
 import { apiUrl, authHeaders } from '@/lib/api';
 import { EBillCategory } from '@backend/shared/types';
 
@@ -52,10 +52,32 @@ interface Bill {
   entryMethod: string;
 }
 
+interface UpcomingItem {
+  recurringBillId: string;
+  name: string;
+  category: string;
+  amount: number;
+  dueDate: string;
+}
+
+interface UpcomingForecast {
+  occurrences: UpcomingItem[];
+  totalUpcoming: number;
+}
+
+function daysUntil(iso: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(iso);
+  due.setHours(0, 0, 0, 0);
+  return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 export default function AccountPage() {
   const { data: session, status } = useSession();
   const [stats, setStats] = useState<BillStats | null>(null);
   const [recentBills, setRecentBills] = useState<Bill[]>([]);
+  const [upcoming, setUpcoming] = useState<UpcomingForecast | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -71,9 +93,14 @@ export default function AccountPage() {
       setLoading(true);
       const headers = await authHeaders();
 
-      const [statsRes, billsRes] = await Promise.all([
+      // Run the recurring sync first so any due cycles are materialised as Bills
+      // before we read stats. Idempotent — safe to call on every dashboard mount.
+      await fetch(`${apiUrl()}/api/recurring/sync`, { method: 'POST', headers }).catch(() => {});
+
+      const [statsRes, billsRes, forecastRes] = await Promise.all([
         fetch(`${apiUrl()}/api/bills/stats?month=${selectedMonth}&year=${selectedYear}`, { headers }),
         fetch(`${apiUrl()}/api/bills?month=${selectedMonth}&year=${selectedYear}&limit=5`, { headers }),
+        fetch(`${apiUrl()}/api/recurring/forecast?days=14`, { headers }),
       ]);
 
       if (statsRes.ok) {
@@ -84,6 +111,11 @@ export default function AccountPage() {
       if (billsRes.ok) {
         const billsData = await billsRes.json();
         setRecentBills(billsData.data?.bills || []);
+      }
+
+      if (forecastRes.ok) {
+        const forecastData = await forecastRes.json();
+        setUpcoming(forecastData.data || null);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -186,6 +218,59 @@ export default function AccountPage() {
           </div>
         ) : (
           <>
+            {/* Upcoming bills (next 14 days) */}
+            <div className='mb-6 rounded-2xl border border-border bg-card p-6'>
+              <div className='mb-3 flex flex-wrap items-center justify-between gap-3'>
+                <div>
+                  <p className='text-sm text-muted'>Upcoming bills · next 14 days</p>
+                  <p className='mt-1 text-3xl font-bold text-foreground'>
+                    ${(upcoming?.totalUpcoming || 0).toFixed(2)}
+                  </p>
+                </div>
+                <Link href='/bills/recurring' className='text-sm font-medium text-primary hover:underline'>
+                  Manage recurring bills
+                </Link>
+              </div>
+              {upcoming && upcoming.occurrences.length > 0 ? (
+                <div className='space-y-2'>
+                  {upcoming.occurrences.slice(0, 6).map((o, i) => {
+                    const due = daysUntil(o.dueDate);
+                    return (
+                      <div
+                        key={`${o.recurringBillId}-${i}`}
+                        className='flex items-center justify-between rounded-lg border border-border p-3'
+                      >
+                        <div className='flex items-center gap-3'>
+                          <div className={`h-2.5 w-2.5 rounded-full ${CATEGORY_COLORS[o.category] || 'bg-gray-500'}`} />
+                          <div>
+                            <p className='font-medium text-foreground'>{o.name}</p>
+                            <p className='text-xs text-muted'>
+                              {due <= 0 ? 'Today' : due === 1 ? 'Tomorrow' : `In ${due} days`} ·{' '}
+                              {new Date(o.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                            </p>
+                          </div>
+                        </div>
+                        <p className='font-semibold text-foreground'>${o.amount.toFixed(2)}</p>
+                      </div>
+                    );
+                  })}
+                  {upcoming.occurrences.length > 6 && (
+                    <p className='pt-1 text-center text-xs text-muted'>
+                      +{upcoming.occurrences.length - 6} more in the next 14 days
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className='rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted'>
+                  Nothing scheduled in the next 14 days.{' '}
+                  <Link href='/bills/recurring' className='text-primary hover:underline'>
+                    Add a recurring bill
+                  </Link>{' '}
+                  to forecast cash flow.
+                </div>
+              )}
+            </div>
+
             {/* Stats Cards */}
             <div className='mb-8 grid gap-4 sm:grid-cols-3'>
               <div className='rounded-2xl border border-border bg-card p-6'>

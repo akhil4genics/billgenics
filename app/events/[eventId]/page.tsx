@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-import { AppHeader } from '../../components/AppHeader';
+import { AppHeader } from '@/components/AppHeader';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { apiUrl } from '@/lib/api';
 import { EBillCategory, ESplitType } from '@backend/shared/types';
 
@@ -58,6 +59,7 @@ export default function EventDetailPage() {
   const { data: session, status } = useSession({ required: true });
   const params = useParams();
   const eventId = params.eventId as string;
+  const confirm = useConfirm();
 
   const [event, setEvent] = useState<Event | null>(null);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -346,8 +348,13 @@ export default function EventDetailPage() {
     if (!event) return;
     const isActive = event.status === 'active';
     const next = isActive ? 'closed' : 'active';
-    if (isActive && !confirm('Close this event? Members will no longer be able to add expenses unless you reopen it.')) {
-      return;
+    if (isActive) {
+      const ok = await confirm({
+        title: 'Close this event?',
+        message: 'Members will no longer be able to add expenses unless you reopen it.',
+        confirmText: 'Close event',
+      });
+      if (!ok) return;
     }
     try {
       const headers = getHeaders();

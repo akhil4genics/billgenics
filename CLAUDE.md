@@ -115,6 +115,7 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 │   │   ├── page.tsx        # Bills list (filter by month, category)
 │   │   ├── scan/           # Receipt scanning (camera/upload → AI parse → review → save)
 │   │   ├── new/            # Manual bill entry
+│   │   ├── recurring/      # Recurring bills hub (list, add, suggestions, 60-day forecast)
 │   │   └── [billId]/       # Bill detail/edit
 │   ├── events/             # Expense splitting events
 │   │   ├── page.tsx        # Events list
@@ -140,11 +141,13 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 │   │   │   ├── auth.ts     # Auth routes (all public)
 │   │   │   ├── bills.ts    # Bill routes (JWT required)
 │   │   │   ├── events.ts   # Event routes (JWT required)
+│   │   │   ├── recurring.ts      # Recurring bills routes (JWT required)
 │   │   │   └── notifications.ts  # Notification routes (JWT required)
 │   │   ├── controllers/
 │   │   │   ├── auth.controller.ts          # Auth business logic
 │   │   │   ├── bills.controller.ts         # Bill CRUD + scan + stats
 │   │   │   ├── events.controller.ts        # Event CRUD + expenses + balances + settle
+│   │   │   ├── recurring.controller.ts     # Recurring bills: CRUD, forecast, mark-paid, suggestions, run-reminders
 │   │   │   └── notifications.controller.ts # Notification list + mark read
 │   │   ├── middleware/
 │   │   │   ├── auth.ts     # JWT verification middleware + ObjectId validator
@@ -154,6 +157,7 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 │   │   │   ├── Bill.ts     # Bill/receipt model (items, category, totals, tags, warranty, attachments)
 │   │   │   ├── Event.ts    # Shared expense event model (members)
 │   │   │   ├── Expense.ts  # Expense within event (splits, settled status)
+│   │   │   ├── RecurringBill.ts # Recurring bill schedule (cadence, nextDueDate, channel, status)
 │   │   │   └── Notification.ts  # In-app notification model
 │   │   ├── lib/
 │   │   │   ├── db.ts       # MongoDB connection
@@ -206,6 +210,16 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 - `PATCH /api/notifications/:id/read` — Mark notification as read
 - `PATCH /api/notifications/read-all` — Mark all as read
 
+### Recurring Bills (protected — JWT required)
+- `GET /api/recurring` — List user's recurring bills
+- `POST /api/recurring` — Create a recurring bill schedule. Body accepts `endDate` (optional ISO date — schedule auto-completes on/after that date; omit for "until I stop")
+- `GET /api/recurring/forecast?days=N` — Project upcoming occurrences over the next N days (default 30, max 365). Stops projecting at each schedule's `endDate` if set. Returns flat timeline + `totalUpcoming` running total
+- `GET /api/recurring/suggestions` — Auto-detect recurring patterns from the last 12 months of `Bill`s. Groups by `storeName` (case-insensitive), computes avg gap, maps to nearest cadence, scores confidence (high/medium/low based on occurrence count and gap variance). Skips names already tracked
+- `POST /api/recurring/sync` — Idempotent combined cron job. For each active schedule: (1) auto-creates a `Bill` (with `entryMethod: 'recurring'`, `recurringBillId` linked) for every cycle whose `nextDueDate <= today`, rolling the schedule forward each time and marking it `completed` if `endDate` is reached; (2) creates a `RECURRING_BILL_DUE` notification for any cycle inside its reminder window. De-duped via `lastGeneratedCycleDate` and `lastReminderCycleDate`, so re-running is safe. Called automatically on dashboard mount; designed to also run via EventBridge daily in production
+- `PUT /api/recurring/:id` — Update fields (incl. `status` to pause/resume, `endDate: null` to clear). Pass any field including `endDate` to extend or curtail the schedule
+- `DELETE /api/recurring/:id` — Hard delete
+- `POST /api/recurring/:id/mark-paid` — "Skip to next cycle" — advances `nextDueDate` and stamps `lastPaidDate`. Does NOT create a `Bill` (sync owns that). Use when the user has paid this cycle outside the app and wants to skip ahead. Marks the schedule `completed` if the rolled date passes `endDate`
+
 ## Receipt Scanning Flow
 
 1. User uploads/captures receipt image on `/bills/scan` page (scanning ONLY happens here)
@@ -224,6 +238,85 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 5. Frontend registers attachment via `POST /api/bills/:billId/attachments`
 6. Attachments displayed inline (images shown as previews, other files as download links)
 7. No AI scanning triggered — attachments are stored as-is
+
+## Recurring Bills Flow
+
+Users have many recurring household bills (rent, utilities, daycare, subscriptions,
+work tools) landing on different cycles, from different channels (email/SMS/app).
+Manual tracking apps collapse when life gets busy — unexpected renewals cause
+cash-flow stress. The Recurring Bills feature converts that chaos into a
+forward-looking, low-maintenance schedule that **auto-creates `Bill` rows on the
+due date** so monthly stats reflect the spend without any manual entry.
+
+1. User opens `/bills/recurring`. The page fetches three things in parallel:
+   - `GET /api/recurring` — current schedules
+   - `GET /api/recurring/forecast?days=60` — projected occurrences + running total
+   - `GET /api/recurring/suggestions` — auto-detected patterns from past `Bill`s
+2. User accepts a suggestion (one click → `POST /api/recurring`) or fills the
+   inline form to add a schedule manually
+3. Each schedule defines: `name`, `category`, `amount` (estimate), `cadence`
+   (weekly | fortnightly | monthly | quarterly | yearly | custom-N-days),
+   `nextDueDate`, optional `endDate` (omit for "until I stop"),
+   `reminderDaysBefore`, `channel`
+4. Dashboard `/account` calls `POST /api/recurring/sync` on mount before reading
+   stats — that materialises any newly-due cycles as `Bill` rows so monthly totals
+   include them. Then the "next 14 days" widget reads
+   `GET /api/recurring/forecast?days=14` to answer "will next month feel tight?"
+5. `POST /api/recurring/sync` is the single cron entry point. It does two things
+   atomically per schedule, both deduplicated per cycle:
+   - **Auto-generate `Bill`** for every cycle whose `nextDueDate <= today`
+     (`entryMethod: 'recurring'`, `recurringBillId` linked, `total = schedule.amount`).
+     Multiple back-fills happen in a loop so a long-paused schedule catches up.
+     Schedule rolls forward each iteration; flips to `completed` if `endDate`
+     is reached.
+   - **Create reminder notification** if `nextDueDate - today <= reminderDaysBefore`
+     and we haven't already reminded for this cycle.
+   Designed for EventBridge (daily) in production; also called from the dashboard
+   on mount as a belt-and-braces trigger
+6. The user can edit any auto-generated bill from `/bills/[billId]` if the actual
+   amount differs from the estimate
+7. `POST /api/recurring/:id/mark-paid` is the "I paid this elsewhere — skip to
+   the next cycle" affordance. It does NOT create a `Bill` (sync owns that); it
+   only advances the schedule. Available only while the schedule is active
+8. Schedules can be paused (status: `paused`) without losing history; the
+   forecast and sync skip non-active schedules. Once `endDate` is reached the
+   schedule is marked `completed` (greyed out, no further sync work)
+
+### Auto-detection algorithm (`GET /api/recurring/suggestions`)
+
+- Loads the user's last 12 months of active `Bill`s
+- Groups by `storeName.trim().toLowerCase()`
+- Skips groups with <2 bills, or names already on a recurring schedule
+- Computes mean gap between consecutive bills + standard deviation
+- Maps mean gap to the nearest fixed cadence (weekly/fortnightly/monthly/
+  quarterly/yearly) with tolerance windows; falls back to `custom` with the
+  rounded gap in days
+- Confidence: `high` (≥3 bills + CV<0.2), `medium` (≥2 bills + CV<0.4), else `low`
+- Returns suggestions sorted by confidence so high-confidence items surface first
+
+### Why this shape
+
+- **Forecast over reactive reminders alone**: the "will next month feel tight?"
+  question is the user's actual pain, so the forecast endpoint and the dashboard
+  widget are first-class — not a side-effect of reminders
+- **Idempotent reminders**: `lastReminderCycleDate` (= the `nextDueDate` it last
+  reminded for) makes `run-reminders` safe to re-run, so the cron schedule can
+  be coarse without duplicate notifications
+- **Suggestions, not auto-creation**: we never auto-create schedules from
+  detected patterns — the user must accept. Auto-creating would silently shape
+  their forecast based on noisy data
+- **Reuses existing notifications surface**: `RECURRING_BILL_DUE` is just another
+  `ENotificationType`; no new delivery channel needed for the POC. Push/SMS
+  delivery can be layered later without changing the schedule model
+
+### Out of scope for the current implementation
+
+- Email/SMS provider-bill ingestion (parsing inbound bill emails into `Bill`s
+  and auto-marking schedules paid) — useful long term but its own project
+- Open Banking / Basiq direct-debit detection from bank statements
+- Push notifications to phone (the in-app notification surface is what fires today)
+- The actual EventBridge schedule wiring for `run-reminders` (the endpoint exists
+  and is auth-gated; adding the schedule is a serverless.yml change)
 
 ## Expense Splitting Flow
 
@@ -305,3 +398,14 @@ DB Indexes: userId+date, userId+category, userId+tags, userId+warranty.expiryDat
 - **Scan-only on scan page** — AI receipt parsing only triggers from `/bills/scan`; other pages allow manual entry and file attachment without scanning
 - **Tags stored lowercase** — normalized on create/update for consistent search
 - **Attachments stored as S3 keys** — presigned URLs generated on read (1hr expiry)
+- **Recurring bills are a separate model** — `RecurringBill` is the *forward-looking*
+  schedule (cadence + nextDueDate + optional endDate); `Bill` is the *historical*
+  record. The sync job materialises one `Bill` per cycle on the due date with
+  `entryMethod: 'recurring'` and `recurringBillId` linking back to the schedule
+- **Sync is idempotent per cycle on both axes** — `lastGeneratedCycleDate` and
+  `lastReminderCycleDate` track which cycle we last generated/reminded for, so
+  `POST /api/recurring/sync` is safe to re-run on any cadence (dashboard-mount,
+  EventBridge daily, manual button) without duplicate Bills or notifications
+- **`endDate` is optional** — omit for "until I stop"; set it to bound a fixed-term
+  contract (e.g., 12-month phone plan). Sync flips status to `completed` once the
+  rolled-forward `nextDueDate` crosses `endDate`

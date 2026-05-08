@@ -24,7 +24,12 @@ function MoonIcon({ className }: { className?: string }) {
 
 const NAV = [
   { href: '/account', label: 'Dashboard', match: (p: string) => p === '/account' },
-  { href: '/bills', label: 'Bills', match: (p: string) => p.startsWith('/bills') },
+  {
+    href: '/bills',
+    label: 'Bills',
+    match: (p: string) => p.startsWith('/bills') && !p.startsWith('/bills/recurring'),
+  },
+  { href: '/bills/recurring', label: 'Recurring', match: (p: string) => p.startsWith('/bills/recurring') },
   { href: '/events', label: 'Events', match: (p: string) => p.startsWith('/events') },
 ];
 
@@ -94,7 +99,7 @@ export function AppHeader() {
           <Link
             href='/account'
             className={`flex flex-col items-center gap-1 px-3 py-1 ${
-              NAV[0].match(pathname) ? 'text-primary' : 'text-muted'
+              pathname === '/account' ? 'text-primary' : 'text-muted'
             }`}
           >
             <svg className='h-5 w-5' fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>
@@ -105,7 +110,7 @@ export function AppHeader() {
           <Link
             href='/bills'
             className={`flex flex-col items-center gap-1 px-3 py-1 ${
-              NAV[1].match(pathname) ? 'text-primary' : 'text-muted'
+              pathname.startsWith('/bills') && !pathname.startsWith('/bills/recurring') ? 'text-primary' : 'text-muted'
             }`}
           >
             <svg className='h-5 w-5' fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>
@@ -114,9 +119,20 @@ export function AppHeader() {
             <span className='text-xs'>Bills</span>
           </Link>
           <Link
+            href='/bills/recurring'
+            className={`flex flex-col items-center gap-1 px-3 py-1 ${
+              pathname.startsWith('/bills/recurring') ? 'text-primary' : 'text-muted'
+            }`}
+          >
+            <svg className='h-5 w-5' fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>
+              <path strokeLinecap='round' strokeLinejoin='round' d='M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99' />
+            </svg>
+            <span className='text-xs'>Recurring</span>
+          </Link>
+          <Link
             href='/events'
             className={`flex flex-col items-center gap-1 px-3 py-1 ${
-              NAV[2].match(pathname) ? 'text-primary' : 'text-muted'
+              pathname.startsWith('/events') ? 'text-primary' : 'text-muted'
             }`}
           >
             <svg className='h-5 w-5' fill='none' viewBox='0 0 24 24' strokeWidth={1.5} stroke='currentColor'>

@@ -16,6 +16,7 @@ export enum EBillCategory {
 export enum EEntryMethod {
   SCAN = 'scan',
   MANUAL = 'manual',
+  RECURRING = 'recurring',
 }
 
 export enum EBillStatus {
@@ -46,6 +47,71 @@ export enum ENotificationType {
   SETTLEMENT_REQUEST = 'settlement_request',
   SETTLEMENT_CONFIRMED = 'settlement_confirmed',
   EXPENSE_ADDED = 'expense_added',
+  RECURRING_BILL_DUE = 'recurring_bill_due',
+}
+
+export enum ECadence {
+  WEEKLY = 'weekly',
+  FORTNIGHTLY = 'fortnightly',
+  MONTHLY = 'monthly',
+  QUARTERLY = 'quarterly',
+  YEARLY = 'yearly',
+  CUSTOM = 'custom',
+}
+
+export enum ERecurringStatus {
+  ACTIVE = 'active',
+  PAUSED = 'paused',
+  CANCELLED = 'cancelled',
+  COMPLETED = 'completed',
+}
+
+export enum ERecurringChannel {
+  EMAIL = 'email',
+  SMS = 'sms',
+  APP = 'app',
+  DIRECT_DEBIT = 'direct_debit',
+  MANUAL = 'manual',
+}
+
+export interface IRecurringBill {
+  _id: string;
+  userId: string;
+  name: string;
+  category: EBillCategory;
+  amount: number;
+  cadence: ECadence;
+  intervalDays?: number;
+  nextDueDate: string;
+  endDate?: string;
+  lastPaidDate?: string;
+  reminderDaysBefore: number;
+  channel: ERecurringChannel;
+  notes?: string;
+  status: ERecurringStatus;
+  autoDetected: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IRecurringForecastItem {
+  recurringBillId: string;
+  name: string;
+  category: EBillCategory;
+  amount: number;
+  dueDate: string;
+  channel: ERecurringChannel;
+}
+
+export interface IRecurringSuggestion {
+  name: string;
+  category: EBillCategory;
+  amount: number;
+  cadence: ECadence;
+  intervalDays?: number;
+  nextDueDate: string;
+  occurrences: number;
+  confidence: 'high' | 'medium' | 'low';
 }
 
 export interface IBillItem {
@@ -88,6 +154,7 @@ export interface IBill {
   warranty?: IBillWarranty;
   attachments: IBillAttachment[];
   entryMethod: EEntryMethod;
+  recurringBillId?: string;
   status: EBillStatus;
   createdAt: string;
   updatedAt: string;

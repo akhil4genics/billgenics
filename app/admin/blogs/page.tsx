@@ -5,7 +5,8 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { apiUrl, authHeaders } from '@/lib/api';
-import { Header } from '../../components/Header';
+import { Header } from '@/components/Header';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { EBlogStatus, type IBlog } from '@backend/shared/types';
 
 function formatDate(iso?: string): string {
@@ -17,6 +18,7 @@ export default function AdminBlogsPage() {
   const { data: session, status } = useSession({ required: true });
   const [blogs, setBlogs] = useState<IBlog[]>([]);
   const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
 
   const isAdmin = session?.user?.adminUser === true;
 
@@ -55,7 +57,13 @@ export default function AdminBlogsPage() {
   }
 
   async function removeBlog(blog: IBlog) {
-    if (!confirm(`Delete "${blog.title}"? This cannot be undone.`)) return;
+    const ok = await confirm({
+      title: `Delete "${blog.title}"?`,
+      message: 'This blog post will be permanently removed. This cannot be undone.',
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       const headers = await authHeaders();
       const res = await fetch(`${apiUrl()}/api/blogs/${blog._id}`, { method: 'DELETE', headers });

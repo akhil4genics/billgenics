@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { apiUrl, authHeaders } from '@/lib/api';
-import { Header } from '../../../components/Header';
+import { Header } from '@/components/Header';
 
 interface InvitePreview {
   name: string;

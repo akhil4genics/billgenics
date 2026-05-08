@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import useSWR from 'swr';
 import { apiUrl } from '@/lib/api';
-import { Header } from '../../components/Header';
+import { Header } from '@/components/Header';
 import type { IBlog } from '@backend/shared/types';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());

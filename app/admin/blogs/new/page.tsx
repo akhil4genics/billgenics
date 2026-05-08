@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { Header } from '../../../components/Header';
+import { Header } from '@/components/Header';
 import { BlogEditor } from '../BlogEditor';
 
 export default function NewBlogPage() {

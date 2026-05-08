@@ -16,6 +16,7 @@ export enum EBillCategory {
 export enum EEntryMethod {
   SCAN = 'scan',
   MANUAL = 'manual',
+  RECURRING = 'recurring',
 }
 
 export enum EBillStatus {
@@ -60,6 +61,7 @@ export interface IBillModel extends Document {
   warranty?: IBillWarranty;
   attachments: IBillAttachment[];
   entryMethod: EEntryMethod;
+  recurringBillId?: Schema.Types.ObjectId;
   status: EBillStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -112,6 +114,7 @@ const BillSchema = new Schema<IBillModel>(
     warranty: { type: BillWarrantySchema },
     attachments: { type: [BillAttachmentSchema], default: [] },
     entryMethod: { type: String, enum: Object.values(EEntryMethod), required: true },
+    recurringBillId: { type: Schema.Types.ObjectId, ref: 'RecurringBill' },
     status: { type: String, enum: Object.values(EBillStatus), default: EBillStatus.ACTIVE, required: true },
   },
   { timestamps: true }
@@ -121,6 +124,7 @@ BillSchema.index({ userId: 1, date: -1 });
 BillSchema.index({ userId: 1, category: 1 });
 BillSchema.index({ userId: 1, tags: 1 });
 BillSchema.index({ userId: 1, 'warranty.expiryDate': 1 });
+BillSchema.index({ userId: 1, recurringBillId: 1 });
 BillSchema.index(
   { storeName: 'text', 'items.name': 'text', tags: 'text', notes: 'text', 'warranty.details': 'text' },
   { weights: { storeName: 10, tags: 8, 'items.name': 5, notes: 2, 'warranty.details': 2 } }
