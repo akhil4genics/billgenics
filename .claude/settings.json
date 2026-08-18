@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"/Users/akhil/Documents/Personal Projects/billgenics\" && ls node_modules/.bin | grep -iE \"playwright|puppeteer\" ; echo \"---\"; ls node_modules | grep -iE \"^\\(playwright|puppeteer\\)\" ; echo \"--- chrome? ---\"; ls \"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" 2>/dev/null && echo \"chrome present\"; which chromium 2>/dev/null)",
+      "Read(//Applications/Google Chrome.app/Contents/MacOS/**)"
+    ]
+  }
+}

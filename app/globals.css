@@ -2,30 +2,36 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #13274d;
-  --primary: #0555f1;
-  --primary-hover: #0044cc;
-  --secondary: #f7f8fa;
-  --secondary-hover: #eef1f6;
-  --accent: #3b82f6;
-  --muted: #5c6b87;
+  --foreground: #0f172a;
+  --primary: #3b4ef8;
+  --primary-hover: #2f3fd6;
+  --secondary: #f6f7fb;
+  --secondary-hover: #eef0f9;
+  --accent: #6c63ff;
+  --muted: #64748b;
   --card: #ffffff;
-  --card-hover: #f7f8fa;
-  --border: #e6e9f0;
+  --card-hover: #f6f7fb;
+  --border: #e7e9f4;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
 }
 
 .dark {
-  --background: #0b1020;
+  --background: #080b18;
   --foreground: #f1f5f9;
-  --primary: #4b82ff;
-  --primary-hover: #6b9aff;
-  --secondary: #141a2e;
-  --secondary-hover: #1d2540;
-  --accent: #7fa6ff;
+  --primary: #6b78ff;
+  --primary-hover: #8590ff;
+  --secondary: #121727;
+  --secondary-hover: #1b2236;
+  --accent: #9a91ff;
   --muted: #94a3b8;
-  --card: #141a2e;
-  --card-hover: #1d2540;
-  --border: #22304d;
+  --card: #101525;
+  --card-hover: #161d33;
+  --border: #232c47;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
 }
 
 @theme inline {
@@ -40,7 +46,11 @@
   --color-card: var(--card);
   --color-card-hover: var(--card-hover);
   --color-border: var(--border);
-  --font-sans: var(--font-geist-sans);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-jakarta);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -52,6 +62,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
 }
 
 html {
@@ -87,10 +98,10 @@ html {
 
 /* Tokens for shared shadows — change here to update app-wide */
 :root {
-  --shadow-primary: 0 10px 30px -10px rgba(5, 85, 241, 0.6);
-  --shadow-primary-hover: 0 18px 40px -10px rgba(5, 85, 241, 0.7);
-  --shadow-card: 0 20px 50px -20px rgba(5, 85, 241, 0.15);
-  --shadow-card-hover: 0 25px 50px -20px rgba(5, 85, 241, 0.25);
+  --shadow-primary: 0 10px 30px -10px rgba(59, 78, 248, 0.55);
+  --shadow-primary-hover: 0 18px 40px -10px rgba(59, 78, 248, 0.7);
+  --shadow-card: 0 20px 50px -20px rgba(59, 78, 248, 0.15);
+  --shadow-card-hover: 0 25px 50px -20px rgba(59, 78, 248, 0.25);
 }
 
 /* Primary CTA — blue pill with blue shadow */
@@ -262,4 +273,115 @@ html {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+/* ─── Landing page visual system ─────────────────────────────────────────
+ * Premium marketing helpers: gradient text, glassmorphism, glowing blobs,
+ * mesh backgrounds. Scoped to landing use; safe app-wide.
+ * ─────────────────────────────────────────────────────────────────────── */
+
+/* Gradient clipped text (primary → accent) */
+.text-gradient {
+  background-image: linear-gradient(120deg, var(--primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Animated shimmer gradient text */
+.text-gradient-animated {
+  background-image: linear-gradient(
+    120deg,
+    var(--primary) 0%,
+    var(--accent) 45%,
+    var(--primary) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gradient 6s ease infinite;
+}
+
+/* Glassmorphism cards */
+.glass {
+  background-color: color-mix(in srgb, var(--card) 65%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+.glass-strong {
+  background-color: color-mix(in srgb, var(--card) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+}
+
+/* Soft glowing background blob */
+.blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.55;
+  pointer-events: none;
+  will-change: transform;
+}
+.dark .blob {
+  opacity: 0.4;
+}
+
+/* Subtle dotted / grid mesh background */
+.mesh-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 60%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
+}
+
+/* Gradient hairline border (for featured cards) */
+.gradient-ring {
+  position: relative;
+}
+.gradient-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@keyframes blob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.08); }
+  66% { transform: translate(-25px, 25px) scale(0.95); }
+}
+.animate-blob {
+  animation: blob-drift 18s ease-in-out infinite;
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-float {
+  animation: float-y 6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-blob,
+  .animate-float,
+  .animate-marquee,
+  .text-gradient-animated {
+    animation: none !important;
+  }
+  html {
+    scroll-behavior: auto;
+  }
 }
