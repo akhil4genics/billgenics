@@ -33,7 +33,7 @@ export async function parseReceiptImage(imageUrl: string): Promise<ParsedReceipt
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
+      model: 'gpt-4.1-mini',
       messages: [
         {
           role: 'system',

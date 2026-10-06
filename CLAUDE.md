@@ -85,7 +85,7 @@ Each has its own `package.json`, `tsconfig.json`, and dependencies.
 - Serverless Framework v3 (`serverless.yml`)
 - MongoDB via Mongoose
 - AWS S3 (presigned URLs for receipt image storage)
-- OpenAI GPT-4o Vision for receipt scanning/parsing
+- OpenAI GPT-4.1 mini vision for receipt scanning/parsing
 - Nodemailer (Gmail SMTP) for transactional emails
 - Zod for input validation
 - bcryptjs for password hashing (12 rounds)
@@ -219,7 +219,7 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 │   │   │   ├── db.ts       # MongoDB connection
 │   │   │   ├── s3.ts       # S3 client + presigned URL generation (upload + download)
 │   │   │   ├── email.ts    # Nodemailer transporter + email templates
-│   │   │   └── openai.ts   # OpenAI GPT-4o receipt parsing
+│   │   │   └── openai.ts   # OpenAI GPT-4.1 mini receipt parsing
 │   │   └── shared/
 │   │       └── types.ts    # Shared TypeScript types
 │   └── .env                # Backend env vars
@@ -285,7 +285,7 @@ NextAuth (frontend) ↔ Express (backend) via JWT bridge:
 
 1. User uploads/captures receipt image on `/bills/scan` page (scanning ONLY happens here)
 2. Frontend sends base64 image to `POST /api/bills/scan`
-3. Backend sends image to OpenAI GPT-4o Vision API
+3. Backend sends image to OpenAI GPT-4.1 mini vision API
 4. OpenAI returns structured data: store name, ABN, items, totals, date, category
 5. Frontend displays parsed data for user to review/edit
 6. User confirms → `POST /api/bills` saves to database → receipt image uploaded to S3

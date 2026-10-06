@@ -7,7 +7,7 @@ import { SectionHeading } from './ui';
 
 const STEPS: { icon: LucideIcon; title: string; desc: string }[] = [
   { icon: ScanLine, title: 'Scan Receipt', desc: 'Snap a photo of any receipt or bill straight from your phone.' },
-  { icon: Sparkles, title: 'AI Extracts Information', desc: 'GPT-4o Vision pulls the store, line items, totals, tax and date automatically.' },
+  { icon: Sparkles, title: 'AI Extracts Information', desc: 'OpenAI Vision pulls the store, line items, totals, tax and date automatically.' },
   { icon: Repeat, title: 'Schedule Recurring Bill', desc: 'Turn it into a recurring schedule — weekly, monthly, quarterly, or custom.' },
   { icon: BellRing, title: 'Receive Reminder', desc: 'Get a heads-up before every due date, with your chosen lead time.' },
   { icon: CreditCard, title: 'Pay Bill', desc: 'It’s auto-logged to the right category, so your monthly totals stay accurate.' },

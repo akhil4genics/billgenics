@@ -8,7 +8,7 @@ import { SectionHeading } from './ui';
 const FAQS = [
   {
     q: 'How does the AI receipt scanning work?',
-    a: 'Snap a photo of any receipt and BillGenics sends it to GPT-4o Vision, which extracts the store name, line items, totals, tax and date. You review the parsed result, tweak anything if needed, and save — no manual typing.',
+    a: 'Snap a photo of any receipt and BillGenics sends it to OpenAI Vision, which extracts the store name, line items, totals, tax and date. You review the parsed result, tweak anything if needed, and save — no manual typing.',
   },
   {
     q: 'What are recurring bills and how do they help?',

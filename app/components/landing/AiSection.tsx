@@ -28,7 +28,7 @@ export function AiSection() {
             <div className="relative mx-auto max-w-2xl text-center">
               <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1.5 backdrop-blur-sm">
                 <Sparkles className="h-4 w-4 text-white" />
-                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Powered by GPT-4o Vision</span>
+                <span className="text-xs font-semibold uppercase tracking-[0.16em] text-white">Powered by OpenAI Vision</span>
               </span>
               <h2 className="mt-6 font-display text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl">
                 Meet your AI Finance Assistant

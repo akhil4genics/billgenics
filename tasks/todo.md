@@ -67,3 +67,15 @@ A new "Recurring Bills" module:
 - [ ] Add upcoming-bills widget to `/account` dashboard
 - [ ] Add "Recurring" link to `AppHeader` nav
 - [ ] Type-check both packages
+
+## 2026-10-07 — Switch receipt scan model to gpt-4.1-mini
+
+- [x] `backend/src/lib/openai.ts`: model `gpt-4o` → `gpt-4.1-mini` (≈4–5x cheaper per receipt image, same prompt/response contract)
+- [x] CLAUDE.md references updated
+- [x] Landing copy (`Features`, `HowItWorks`, `AiSection`, `Faq`) changed from "GPT-4o Vision" to model-agnostic "OpenAI Vision"
+- [x] Confirmed `gpt-4.1-mini` is listed for the project API key (`GET /v1/models/gpt-4.1-mini` → 200)
+- [ ] **Blocked: live scan verification.** `POST /v1/chat/completions` returns `429 credit_balance_exhausted` — OpenAI account has $0 credits. Re-run after topping up:
+  `cd /bills/scan` in the app with a real receipt, or the scratchpad runner used in this session (compiled `openai.ts` + synthetic Woolworths receipt PNG). Check items sum ≈ subtotal and non-receipt image is rejected.
+
+### Review
+Pure config-level change; no logic touched. The 429 is pre-existing (would have failed on gpt-4o too) — the scan page currently surfaces it as the generic "Failed to scan receipt" 500.

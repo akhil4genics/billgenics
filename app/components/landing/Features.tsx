@@ -19,7 +19,7 @@ const FEATURES: Feature[] = [
   {
     icon: ScanLine,
     title: 'AI Receipt Scan',
-    desc: 'Snap any receipt and GPT-4o Vision reads the store, items, totals and date in seconds — no typing.',
+    desc: 'Snap any receipt and OpenAI Vision reads the store, items, totals and date in seconds — no typing.',
     span: 'sm:col-span-2',
     gradient: 'from-primary to-accent',
   },
